@@ -32,3 +32,6 @@
 *.log
 *.sql
 *.sqlite
+# Bash script #
+###############
+*.sh
