@@ -3,8 +3,8 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 class Trainer(BaseTrainer): 
-    def __init__(self, model, loss, train_loader, val_loader, optimizer, epochs, log_nth, device, single_sample, add_figure_tensorboard):
-        super(Trainer, self).__init__(model, loss, train_loader, val_loader, optimizer, epochs, log_nth, device, single_sample, add_figure_tensorboard)
+    def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, device):
+        super(Trainer, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
 
     def _train_epoch(self, epoch):
         train_loss_epoch = []

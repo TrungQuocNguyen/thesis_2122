@@ -2,17 +2,18 @@ import os
 import datetime
 from torch.utils.tensorboard import SummaryWriter
 class BaseTrainer: 
-    def __init__(self, model, loss, train_loader, val_loader, optimizer, epochs, log_nth, device, single_sample, add_figure_tensorboard):
+    def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, device):
+
         self.model = model
         self.loss_func = loss
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.optimizer = optimizer
         self.device = device
-        self.epochs = epochs
-        self.log_nth = log_nth
-        self.single_sample = single_sample
-        self.add_figure_tensorboard = add_figure_tensorboard
+        self.epochs = cfg["epochs"]
+        self.log_nth = cfg["log_nth"]
+        self.single_sample = cfg["single_sample"]
+        self.add_figure_tensorboard = cfg["add_figure_tensorboard"]
         
         self.train_loss_history = []
         self.train_acc_history = []

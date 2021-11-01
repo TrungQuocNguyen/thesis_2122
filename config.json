@@ -1,0 +1,38 @@
+{
+    "models": {
+        "num_classes": 41,
+        "in_channels": 3,
+        "freeze_bn": true,
+        "freeze_dropout": true
+    }, 
+    "train_loader": {
+        "img_dir": "/mnt/raid/tnguyen/scannet_10_images/trainset",
+        "label_dir": "/mnt/raid/tnguyen/labels_10_images/trainset",
+        "img_size": [64,64],
+        "is_transform": true,
+        "augmentation": false, 
+        "batch_size": 2,
+        "shuffle": true, 
+        "num_workers": 4
+    }, 
+    "val_loader": {
+        "img_dir": "/mnt/raid/tnguyen/scannet_10_images/valset",
+        "label_dir": "/mnt/raid/tnguyen/labels_10_images/valset", 
+        "img_size": [64,64],
+        "is_transform": true,
+        "augmentation": false, 
+        "batch_size": 2,
+        "shuffle": true, 
+        "num_workers": 4
+    }, 
+    "trainer": {
+        "epochs": 2000,
+        "log_nth" :2,
+        "single_sample" : false,
+        "add_figure_tensorboard": false
+    }, 
+    "ignore_index": 0, 
+    "optimizer": {
+        "learning_rate": 4e-3
+    }
+}

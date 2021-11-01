@@ -122,9 +122,9 @@ class BottleNeck(nn.Module):
         return x
 
 class ENet(nn.Module):
-    def __init__(self, num_classes, in_channels=3, freeze_bn=False, freeze_dropout=False):
+    def __init__(self,cfg):
         super(ENet, self).__init__()
-        self.initial = InitalBlock(in_channels)
+        self.initial = InitalBlock(cfg["in_channels"])
 
         # Stage 1
         self.bottleneck10 = BottleNeck(16, 64, downsample=True, p_drop=0.01)
@@ -164,11 +164,11 @@ class ENet(nn.Module):
         self.bottleneck51 = BottleNeck(16, p_drop=0.1, use_prelu=False)
 
         # Stage 6
-        self.fullconv = nn.ConvTranspose2d(16, num_classes, kernel_size=3, padding=1,
+        self.fullconv = nn.ConvTranspose2d(16, cfg["num_classes"], kernel_size=3, padding=1,
                                             output_padding=1, stride=2, bias=False)
         initialize_weights(self)
-        if freeze_bn: self.freeze_bn()
-        if freeze_dropout: self.freeze_dropout()
+        if cfg["freeze_bn"]: self.freeze_bn()
+        if cfg["freeze_dropout"]: self.freeze_dropout()
 
     def forward(self, x):
         x = self.initial(x)

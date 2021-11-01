@@ -5,33 +5,27 @@ import torch.nn as nn
 import torch.optim as optim
 from trainer import Trainer
 import torch
-def main(): 
+import json 
+import argparse
+def main(config):     
     print('Training ENet for 2D Semantic Segmentation task on ScanNet...')
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(device)
-    batch_size = 4
-    epochs = 2000
-    log_nth = 2
-    single_sample = False # set to True will disable the validation set
-    learning_rate =4e-3
-    img_size =(64,64)
-    add_figure_tensorboard = False
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")   
 
-    trainset = ScanNet2D('/mnt/raid/tnguyen/scannet_10_images/trainset', '/mnt/raid/tnguyen/labels_10_images/trainset', img_size = img_size, is_transform= True, augmentation= False)
-    train_loader = DataLoader(trainset, batch_size = batch_size,shuffle = True, num_workers = 4)
+    trainset = ScanNet2D(config["train_loader"])
+    train_loader = DataLoader(trainset, batch_size = config["train_loader"]["batch_size"],shuffle = config["train_loader"]["shuffle"], num_workers = config["train_loader"]["num_workers"])
 
-    valset = ScanNet2D('/mnt/raid/tnguyen/scannet_10_images/valset', '/mnt/raid/tnguyen/labels_10_images/valset', img_size = img_size, is_transform= True, augmentation= False)
-    val_loader = DataLoader(valset, batch_size = batch_size,shuffle = True, num_workers = 4)
+    valset = ScanNet2D(config["val_loader"])
+    val_loader = DataLoader(valset, batch_size = config["val_loader"]["batch_size"],shuffle = config["val_loader"]["shuffle"], num_workers = config["val_loader"]["num_workers"])
     
-    model = ENet(num_classes= 41, in_channels=3, freeze_bn= True, freeze_dropout= True)
+    model = ENet(config["models"])
     print_params(model)
     model.to(device)
 
-    loss = nn.CrossEntropyLoss(ignore_index = 0)
+    loss = nn.CrossEntropyLoss(ignore_index = config["ignore_index"])
 
-    optimizer = optim.Adam(model.parameters(), lr = learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr = config["optimizer"]["learning_rate"])
 
-    trainer = Trainer(model, loss, train_loader, val_loader, optimizer, epochs, log_nth, device, single_sample, add_figure_tensorboard)
+    trainer = Trainer(config["trainer"], model, loss, train_loader, val_loader, optimizer, device)
     trainer.train()
 
 def print_params(model): 
@@ -41,4 +35,9 @@ def print_params(model):
     print('Trainable params: %d' %(trainable_params))
 
 if __name__ =='__main__': 
-    main()
+    parser = argparse.ArgumentParser(description='PyTorch Training')
+    parser.add_argument('-c', '--config', default='config.json',type=str,
+                        help='Path to the config file (default: config.json)')
+    args = parser.parse_args()
+    config = json.load(open(args.config))
+    main(config)

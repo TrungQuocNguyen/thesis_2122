@@ -8,14 +8,14 @@ from torchvision.transforms.functional import InterpolationMode
 import torchvision.transforms.functional as tf
 import random 
 class ScanNet2D(Dataset): 
-    def __init__(self, img_dir, label_dir, img_size, is_transform = True, augmentation = True): 
-        self.img_dir = img_dir
-        self.label_dir =label_dir
-        self.img_list = sorted(os.listdir(img_dir))
-        self.label_list = sorted(os.listdir(label_dir))
-        self.img_size = img_size
-        self.is_transform = is_transform
-        self.augmentation = augmentation
+    def __init__(self, cfg): 
+        self.img_dir = cfg["img_dir"]
+        self.label_dir =cfg["label_dir"]
+        self.img_list = sorted(os.listdir(self.img_dir))
+        self.label_list = sorted(os.listdir(self.label_dir))
+        self.img_size = cfg["img_size"]
+        self.is_transform = cfg["is_transform"]
+        self.augmentation = cfg["augmentation"]
     def __len__(self): 
         return len(self.img_list)
     def __getitem__(self, idx): 
