@@ -122,7 +122,7 @@ class BottleNeck(nn.Module):
         return x
 
 class ENet(nn.Module):
-    def __init__(self, num_classes, in_channels=3, freeze_bn=False):
+    def __init__(self, num_classes, in_channels=3, freeze_bn=False, freeze_dropout=False):
         super(ENet, self).__init__()
         self.initial = InitalBlock(in_channels)
 
@@ -168,6 +168,7 @@ class ENet(nn.Module):
                                             output_padding=1, stride=2, bias=False)
         initialize_weights(self)
         if freeze_bn: self.freeze_bn()
+        if freeze_dropout: self.freeze_dropout()
 
     def forward(self, x):
         x = self.initial(x)
@@ -218,3 +219,6 @@ class ENet(nn.Module):
     def freeze_bn(self):
         for module in self.modules():
             if isinstance(module, nn.BatchNorm2d): module.eval()
+    def freeze_dropout(self): 
+        for module in self.modules():
+            if isinstance(module, nn.Dropout2d): module.eval()
