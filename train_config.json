@@ -2,37 +2,39 @@
     "models": {
         "num_classes": 41,
         "in_channels": 3,
-        "freeze_bn": true,
-        "freeze_dropout": true
+        "freeze_bn": false,
+        "freeze_dropout": false
     }, 
     "train_loader": {
-        "img_dir": "/mnt/raid/tnguyen/scannet_10_images/trainset",
-        "label_dir": "/mnt/raid/tnguyen/labels_10_images/trainset",
-        "img_size": [64,64],
+        "img_dir": "/mnt/raid/tnguyen/scannet_1_image",
+        "label_dir": "/mnt/raid/tnguyen/label_1_image",
+        "img_size": [512,512],
         "is_transform": true,
         "augmentation": false, 
-        "batch_size": 2,
+        "batch_size": 4,
         "shuffle": true, 
         "num_workers": 4
     }, 
     "val_loader": {
         "img_dir": "/mnt/raid/tnguyen/scannet_10_images/valset",
         "label_dir": "/mnt/raid/tnguyen/labels_10_images/valset", 
-        "img_size": [64,64],
+        "img_size": [512,512],
         "is_transform": true,
         "augmentation": false, 
-        "batch_size": 2,
+        "batch_size": 4,
         "shuffle": true, 
         "num_workers": 4
     }, 
     "trainer": {
-        "epochs": 2000,
-        "log_nth" :2,
-        "single_sample" : false,
-        "add_figure_tensorboard": false
+        "epochs": 500,
+        "log_nth": 1,
+        "single_sample" : true,
+        "add_figure_tensorboard": true, 
+        "tensorboard_path": "saved/runs", 
+        "models_path": "saved/models"
     }, 
     "ignore_index": 0, 
     "optimizer": {
-        "learning_rate": 4e-3
+        "learning_rate": 2e-3
     }
 }
