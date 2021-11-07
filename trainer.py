@@ -1,7 +1,7 @@
 from base import BaseTrainer
 import numpy as np 
 import torch
-import matplotlib.pyplot as plt
+from utils.helpers import plot_preds
 class Trainer(BaseTrainer): 
     def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, device):
         super(Trainer, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
@@ -85,21 +85,3 @@ class Trainer(BaseTrainer):
         preds = preds.cpu().detach()
         
         return loss, acc, preds
-def plot_preds(imgs, targets, preds): 
-    #imgs: [N, 3, img_size, img_size]
-    #targets: [N, img_size, img_size]
-    #preds: [N, img_size, img_size]
-    N = imgs.size(0)
-    num_img_show = N if N <= 4 else 4
-    imgs = imgs.permute(0,2,3,1).numpy()
-    targets = targets.numpy()
-    preds = preds.numpy()
-    fig = plt.figure(figsize=(14,8))
-    for idx in range(num_img_show): 
-        fig.add_subplot(3,num_img_show,idx +1)
-        plt.imshow(imgs[idx])
-        fig.add_subplot(3,num_img_show,idx +1 + num_img_show)
-        plt.imshow(preds[idx])
-        fig.add_subplot(3,num_img_show,idx +1 + num_img_show*2)
-        plt.imshow(targets[idx])
-    return fig
