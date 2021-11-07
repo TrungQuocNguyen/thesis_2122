@@ -1,9 +1,10 @@
 import os
 import datetime
+import torch
 from torch.utils.tensorboard import SummaryWriter
 class BaseTrainer: 
     def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, device):
-
+        self.cfg = cfg
         self.model = model
         self.loss_func = loss
         self.train_loader = train_loader
@@ -19,18 +20,21 @@ class BaseTrainer:
         self.train_acc_history = []
 
         #TENSORBOARDS
-        start_time = datetime.datetime.now().strftime('%m-%d_%H-%M')
+        self.start_time = datetime.datetime.now().strftime('%m-%d_%H-%M')
 
-        write_dir = os.path.join('saved/runs', start_time)
+        write_dir = os.path.join(cfg["tensorboard_path"], self.start_time)
         self.writer = SummaryWriter(write_dir)
     def train(self): 
         for epoch in range(self.epochs):
             self._train_epoch(epoch)
             if not self.single_sample: 
                 self._val_epoch(epoch) 
+        self.save_model()
 
     def _train_epoch(self, epoch): 
         raise NotImplementedError
     def _val_epoch(self, epoch): 
         raise NotImplementedError
-        
+    def save_model(self): 
+        model_name = os.path.join(self.cfg["models_path"], self.start_time + '.pth')
+        torch.save(self.model.state_dict(), model_name)
