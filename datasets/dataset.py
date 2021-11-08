@@ -9,6 +9,7 @@ import torchvision.transforms.functional as tf
 import random 
 class ScanNet2D(Dataset): 
     def __init__(self, cfg): 
+        self.cfg = cfg
         self.img_dir = cfg["img_dir"]
         self.label_dir =cfg["label_dir"]
         self.img_list = sorted(os.listdir(self.img_dir))
@@ -16,6 +17,8 @@ class ScanNet2D(Dataset):
         self.img_size = cfg["img_size"]
         self.is_transform = cfg["is_transform"]
         self.augmentation = cfg["augmentation"]
+        self.mean = cfg["mean"]
+        self.std = cfg["std"]
     def __len__(self): 
         return len(self.img_list)
     def __getitem__(self, idx): 
@@ -39,6 +42,7 @@ class ScanNet2D(Dataset):
         resize_img = transforms.Resize(self.img_size, interpolation = InterpolationMode.BILINEAR)
         resize_target = transforms.Resize(self.img_size, interpolation = InterpolationMode.NEAREST)
         totensor = transforms.ToTensor()
+        normalize = transforms.Normalize(self.mean, self.std)
 
         img = resize_img(img)
         target = resize_target(target)
@@ -53,7 +57,8 @@ class ScanNet2D(Dataset):
                 target = tf.hflip(target)
     
 
-        img = totensor(img)
+        img = normalize(totensor(img))
+
         target = np.array(target, dtype = np.int64)
         target = torch.from_numpy(target)
 

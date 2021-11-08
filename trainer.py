@@ -13,13 +13,15 @@ class Trainer(BaseTrainer):
         for i, (imgs, targets) in enumerate(self.train_loader, 0): 
             loss, acc, preds = self._train_step(imgs, targets)
             if self.log_nth and i % self.log_nth == self.log_nth-1: 
+                mean = torch.tensor(self.train_loader.dataset.mean).reshape(1,3,1,1)
+                std = torch.tensor(self.train_loader.dataset.std).reshape(1,3,1,1)
                 train_loss = np.mean(self.train_loss_history[-self.log_nth:])
                 train_acc = np.mean(self.train_acc_history[-self.log_nth:])
                 self.writer.add_scalar('train_loss', train_loss, global_step= len(self.train_loader)*epoch + i )
                 self.writer.add_scalar('train_accuracy', train_acc, global_step= len(self.train_loader)*epoch + i )
                 print('[Iteration %d/%d] TRAIN loss: %.3f   TRAIN accuracy: %.3f' %(len(self.train_loader)*epoch + i, len(self.train_loader)*self.epochs-1, train_loss, train_acc))
                 if self.add_figure_tensorboard: 
-                    self.writer.add_figure('train predictions vs targets', plot_preds(imgs, targets, preds), global_step = len(self.train_loader)*epoch + i)
+                    self.writer.add_figure('train predictions vs targets', plot_preds(imgs*std+mean, targets, preds), global_step = len(self.train_loader)*epoch + i)
                 if not self.single_sample: 
                     self.model.eval()
                     with torch.no_grad(): 
@@ -29,7 +31,7 @@ class Trainer(BaseTrainer):
                     self.writer.add_scalar('val_accuracy', val_acc, global_step= len(self.train_loader)*epoch + i)
                     print('[Iteration %d/%d] VAL loss: %.3f   VAL accuracy: %.3f' %(len(self.train_loader)*epoch + i, len(self.train_loader)*self.epochs-1, val_loss, val_acc))
                     if self.add_figure_tensorboard: 
-                        self.writer.add_figure('val predictions vs targets', plot_preds(imgs, targets, val_preds), global_step = len(self.train_loader)*epoch + i)
+                        self.writer.add_figure('val predictions vs targets', plot_preds(imgs*std+mean, targets, val_preds), global_step = len(self.train_loader)*epoch + i)
             train_loss_epoch.append(loss)
             train_acc_epoch.append(acc)
         if self.log_nth and not self.single_sample: 
