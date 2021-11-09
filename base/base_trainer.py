@@ -18,8 +18,6 @@ class BaseTrainer:
         self.add_figure_tensorboard = cfg["add_figure_tensorboard"]
         self.start_epoch = 0
         self.best_acc = 0
-        self.train_loss_history = []
-        self.train_acc_history = []
 
         if cfg["load_path"]:
             checkpoint_path = cfg["load_path"]
@@ -54,7 +52,6 @@ class BaseTrainer:
             self._train_epoch(epoch)
             if not self.single_sample: 
                 val_acc = self._val_epoch(epoch)
-                val_acc = val_acc.item()
                 is_best = val_acc > self.best_acc
                 self.best_acc = max(val_acc, self.best_acc)
                 self.save_checkpoint({
