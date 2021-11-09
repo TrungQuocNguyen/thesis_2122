@@ -16,34 +16,51 @@ class BaseTrainer:
         self.log_nth = cfg["log_nth"]
         self.single_sample = cfg["single_sample"]
         self.add_figure_tensorboard = cfg["add_figure_tensorboard"]
-        
+        self.start_epoch = 0
+        self.best_acc = 0
         self.train_loss_history = []
         self.train_acc_history = []
 
-        #TENSORBOARDS
-        start_time = datetime.datetime.now().strftime('%m-%d_%H-%M')
-        write_dir = os.path.join(cfg["tensorboard_path"], start_time)
-        self.writer = SummaryWriter(write_dir)
-        
-        model_path = os.path.join(self.cfg["models_path"], start_time)
+        if cfg["load_path"]:
+            checkpoint_path = cfg["load_path"]
+            if os.path.isfile(checkpoint_path):
+                print("Loading checkpoint '{}'".format(checkpoint_path))
+                checkpoint = torch.load(checkpoint_path)
+                self.start_epoch = checkpoint["epoch"]
+                self.best_acc = checkpoint["best_acc"]
+                self.model.load_state_dict(checkpoint["state_dict"])
+                self.optimizer.load_state_dict(checkpoint["optimizer"])
+
+                dir_name = os.path.basename(os.path.dirname(checkpoint_path))
+            else:
+                print("No checkpoint found at {}".format(checkpoint_path))
+        else: 
+            dir_name = datetime.datetime.now().strftime('%m-%d_%H-%M')
+
+        self.writer = SummaryWriter(os.path.join("saved/runs", dir_name))
+        model_path = os.path.join("saved/models", dir_name)
         if not os.path.exists(model_path): 
             os.makedirs(model_path)
         self.checkpoint_path =  os.path.join(model_path, 'checkpoint.pth.tar')
         self.best_model_path = os.path.join(model_path, 'model_best.pth.tar')
-        
+        #what would happen if I load from checkpoint.pth.tar / model_best.pth.tar ?
+        #load from checkpoint.pth.tar: continue training from where we left off
+        #load from model_best.pth.tar: training from the best model 
+
+
+        #self.epochs = 1500
     def train(self): 
-        best_acc = 0
-        for epoch in range(self.epochs):
+        for epoch in range(self.start_epoch, self.epochs):
             self._train_epoch(epoch)
             if not self.single_sample: 
                 val_acc = self._val_epoch(epoch)
                 val_acc = val_acc.item()
-                is_best = val_acc > best_acc
-                best_acc = max(val_acc, best_acc)
+                is_best = val_acc > self.best_acc
+                self.best_acc = max(val_acc, self.best_acc)
                 self.save_checkpoint({
                     'epoch': epoch+1, 
                     'state_dict': self.model.state_dict(), 
-                    'best_acc': best_acc, 
+                    'best_acc': self.best_acc, 
                     'optimizer': self.optimizer.state_dict(),
                 }, is_best)
 

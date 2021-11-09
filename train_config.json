@@ -32,10 +32,9 @@
     "trainer": {
         "epochs": 1500,
         "log_nth": 2,
-        "single_sample" : false,
-        "add_figure_tensorboard": true, 
-        "tensorboard_path": "saved/runs", 
-        "models_path": "saved/models"
+        "single_sample" : false, 
+        "add_figure_tensorboard": true,  
+        "load_path": "saved/models/11-09_16-33/model_best.pth.tar"
     }, 
     "ignore_index": 0, 
     "optimizer": {
