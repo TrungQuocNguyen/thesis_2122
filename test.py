@@ -1,5 +1,6 @@
 import json 
 import argparse
+import os
 import torch
 from datasets import ScanNet2D
 from torch.utils.data import DataLoader
@@ -11,7 +12,10 @@ def main(config):
     testset = ScanNet2D(config["test_loader"])
     test_loader = DataLoader(testset, batch_size = config["test_loader"]["batch_size"],shuffle = config["test_loader"]["shuffle"], num_workers = config["test_loader"]["num_workers"])
     model = ENet(config["models"])
-    model.load_state_dict(torch.load(config["models"]["load_path"]))
+
+    checkpoint = torch.load(os.path.join(config["models"]["load_path"],"model_best.pth.tar"))
+    print("epoch %d: "%(checkpoint["epoch"]))
+    model.load_state_dict(checkpoint["state_dict"])
     model.to(device)
     model.eval()
     loss_fn = torch.nn.CrossEntropyLoss(ignore_index = config["ignore_index"])

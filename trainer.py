@@ -19,7 +19,7 @@ class Trainer(BaseTrainer):
                 train_acc = np.mean(self.train_acc_history[-self.log_nth:])
                 self.writer.add_scalar('train_loss', train_loss, global_step= len(self.train_loader)*epoch + i )
                 self.writer.add_scalar('train_accuracy', train_acc, global_step= len(self.train_loader)*epoch + i )
-                print('[Iteration %d/%d] TRAIN loss: %.3f   TRAIN accuracy: %.3f' %(len(self.train_loader)*epoch + i, len(self.train_loader)*self.epochs-1, train_loss, train_acc))
+                print('[Iteration %d/%d] TRAIN loss: %.3f   TRAIN accuracy: %.3f' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, train_loss, train_acc))
                 if self.add_figure_tensorboard: 
                     self.writer.add_figure('train predictions vs targets', plot_preds(imgs*std+mean, targets, preds), global_step = len(self.train_loader)*epoch + i)
                 if not self.single_sample: 
@@ -29,13 +29,13 @@ class Trainer(BaseTrainer):
                         val_loss, val_acc, val_preds = self._eval_step(imgs, targets)
                     self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
                     self.writer.add_scalar('val_accuracy', val_acc, global_step= len(self.train_loader)*epoch + i)
-                    print('[Iteration %d/%d] VAL loss: %.3f   VAL accuracy: %.3f' %(len(self.train_loader)*epoch + i, len(self.train_loader)*self.epochs-1, val_loss, val_acc))
+                    print('[Iteration %d/%d] VAL loss: %.3f   VAL accuracy: %.3f' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, val_loss, val_acc))
                     if self.add_figure_tensorboard: 
                         self.writer.add_figure('val predictions vs targets', plot_preds(imgs*std+mean, targets, val_preds), global_step = len(self.train_loader)*epoch + i)
             train_loss_epoch.append(loss)
             train_acc_epoch.append(acc)
         if self.log_nth and not self.single_sample: 
-            print('[Epoch %d/%d] TRAIN loss/acc: %.3f/%.3f' %(epoch, self.epochs-1, np.mean(train_loss_epoch), np.mean(train_acc_epoch)))
+            print('[Epoch %d/%d] TRAIN loss/acc: %.3f/%.3f' %(epoch+1, self.epochs, np.mean(train_loss_epoch), np.mean(train_acc_epoch)))
 
     def _train_step(self, imgs, targets): 
         imgs = imgs.to(self.device) # (N, 3, img_size, img_size)
@@ -70,8 +70,8 @@ class Trainer(BaseTrainer):
         if self.log_nth: 
             self.writer.add_scalar('val_epoch_loss', val_loss, global_step= epoch)
             self.writer.add_scalar('val_epoch_accuracy', val_acc, global_step= epoch)
-            print('[Epoch %d/%d] VAL loss/acc: %.3f/%.3f' %(epoch, self.epochs-1, val_loss, val_acc))
-
+            print('[Epoch %d/%d] VAL loss/acc: %.3f/%.3f' %(epoch+1, self.epochs, val_loss, val_acc))
+        return val_acc
     def _eval_step(self, imgs, targets): 
         imgs = imgs.to(self.device)
         targets = targets.to(self.device)
