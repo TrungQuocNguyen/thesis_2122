@@ -6,35 +6,37 @@
         "freeze_dropout": false
     }, 
     "train_loader": {
-        "img_dir": "/mnt/raid/tnguyen/scannet_10_images/trainset",
-        "label_dir": "/mnt/raid/tnguyen/labels_10_images/trainset",
+        "img_dir": "/mnt/raid/tnguyen/scannet_25k_images/trainset",
+        "label_dir": "/mnt/raid/tnguyen/labels_25k_images/trainset",
         "img_size": [512,512],
-        "mean": [0.4771, 0.4273, 0.3749], 
-        "std": [0.2638, 0.2547, 0.2522], 
+        "mean": [0.4970, 0.4465, 0.3864], 
+        "std": [0.2890, 0.2811, 0.2747], 
         "is_transform": true,
         "augmentation": false, 
-        "batch_size": 4,
+        "normalize": true, 
+        "batch_size": 16,
         "shuffle": true, 
         "num_workers": 4
     }, 
     "val_loader": {
-        "img_dir": "/mnt/raid/tnguyen/scannet_10_images/valset",
-        "label_dir": "/mnt/raid/tnguyen/labels_10_images/valset", 
+        "img_dir": "/mnt/raid/tnguyen/scannet_25k_images/valset",
+        "label_dir": "/mnt/raid/tnguyen/labels_25k_images/valset", 
         "img_size": [512,512],
-        "mean": [0.4771, 0.4273, 0.3749], 
-        "std": [0.2638, 0.2547, 0.2522], 
+        "mean": [0.4970, 0.4465, 0.3864], 
+        "std": [0.2890, 0.2811, 0.2747], 
         "is_transform": true,
         "augmentation": false, 
-        "batch_size": 4,
+        "normalize": true, 
+        "batch_size": 16,
         "shuffle": true, 
         "num_workers": 4
     }, 
     "trainer": {
         "epochs": 1500,
-        "log_nth": 2,
+        "log_nth": 5,
         "single_sample" : false, 
         "add_figure_tensorboard": true,  
-        "load_path": "saved/models/11-09_16-33/model_best.pth.tar"
+        "load_path": ""
     }, 
     "ignore_index": 0, 
     "optimizer": {

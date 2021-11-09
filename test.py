@@ -13,7 +13,7 @@ def main(config):
     test_loader = DataLoader(testset, batch_size = config["test_loader"]["batch_size"],shuffle = config["test_loader"]["shuffle"], num_workers = config["test_loader"]["num_workers"])
     model = ENet(config["models"])
 
-    checkpoint = torch.load(os.path.join(config["models"]["load_path"],"model_best.pth.tar"))
+    checkpoint = torch.load(config["models"]["load_path"])
     print("epoch %d: "%(checkpoint["epoch"]))
     model.load_state_dict(checkpoint["state_dict"])
     model.to(device)

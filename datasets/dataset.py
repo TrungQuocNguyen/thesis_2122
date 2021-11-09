@@ -17,6 +17,7 @@ class ScanNet2D(Dataset):
         self.img_size = cfg["img_size"]
         self.is_transform = cfg["is_transform"]
         self.augmentation = cfg["augmentation"]
+        self.normalize = cfg["normalize"]
         self.mean = cfg["mean"]
         self.std = cfg["std"]
     def __len__(self): 
@@ -57,7 +58,9 @@ class ScanNet2D(Dataset):
                 target = tf.hflip(target)
     
 
-        img = normalize(totensor(img))
+        img = totensor(img)
+        if self.normalize: 
+            img = normalize(img)
 
         target = np.array(target, dtype = np.int64)
         target = torch.from_numpy(target)
