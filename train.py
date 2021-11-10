@@ -7,6 +7,7 @@ from trainer import Trainer
 import torch
 import json 
 import argparse
+from metric.iou import IoU
 def main(config):     
     print('Training ENet for 2D Semantic Segmentation task on ScanNet...')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")   
@@ -24,8 +25,9 @@ def main(config):
     loss = nn.CrossEntropyLoss(ignore_index = config["ignore_index"])
 
     optimizer = optim.Adam(model.parameters(), lr = config["optimizer"]["learning_rate"])
+    metric = IoU(num_classes=config["models"]["num_classes"], ignore_index=config["ignore_index"])
 
-    trainer = Trainer(config["trainer"], model, loss, train_loader, val_loader, optimizer, device)
+    trainer = Trainer(config["trainer"], model, loss, train_loader, val_loader, optimizer, metric, device)
     trainer.train()
 
 def print_params(model): 

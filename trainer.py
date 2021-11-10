@@ -3,8 +3,8 @@ import numpy as np
 import torch
 from utils.helpers import plot_preds
 class Trainer(BaseTrainer): 
-    def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, device):
-        super(Trainer, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
+    def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, metric, device):
+        super(Trainer, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, metric, device)
 
     def _train_epoch(self, epoch):
         train_loss = AverageMeter()
@@ -54,16 +54,19 @@ class Trainer(BaseTrainer):
         val_loss = AverageMeter()
         val_acc = AverageMeter()
         self.model.eval()
+        self.metric.reset()
         with torch.no_grad(): 
             for (imgs, targets) in self.val_loader: 
                loss, acc, _= self._eval_step(imgs, targets)
                val_loss.update(loss, imgs.size(0))
                val_acc.update(acc, imgs.size(0))
+        iou, miou = self.metric.value()
         if self.log_nth: 
             self.writer.add_scalar('val_epoch_loss', val_loss.avg, global_step= epoch)
             self.writer.add_scalar('val_epoch_accuracy', val_acc.avg, global_step= epoch)
-            print('[Epoch %d/%d] VAL loss/acc: %.3f/%.3f' %(epoch+1, self.epochs, val_loss.avg, val_acc.avg))
-        return val_acc.avg
+            self.writer.add_scalar('val_epoch_mIoU', miou, global_step= epoch)
+            print('[Epoch %d/%d] VAL loss/acc: %.3f/%.3f           mIoU: %.3f' %(epoch+1, self.epochs, val_loss.avg, val_acc.avg, miou))
+        return miou
     def _eval_step(self, imgs, targets): 
         imgs = imgs.to(self.device)
         targets = targets.to(self.device)
@@ -75,9 +78,9 @@ class Trainer(BaseTrainer):
         _, preds = torch.max(outputs, 1)
         target_mask = targets >0
         acc = torch.mean((preds == targets)[target_mask].float())
-        preds = preds.cpu().detach()
+        self.metric.add(preds.detach(), targets.detach())
         
-        return loss.item(), acc.item(), preds
+        return loss.item(), acc.item(), preds.cpu().detach()
 class AverageMeter(object): 
     '''Computes and stores the average and current value'''
     def __init__(self):

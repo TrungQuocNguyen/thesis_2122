@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn as nn
-label_to_color = {
+CLASS_IDS_TO_COLOR = {
     0: [0,0,0],  # unannotated: black
     1: [139,0,0],  # wall: maroon
     2: [255, 250, 250],  # floor: snow
@@ -45,11 +45,13 @@ label_to_color = {
     40: [72, 61, 139], # otherprop: dark slate blue
 
 }
+CLASS_LABELS = ['unannotated', 'wall', 'floor', 'cabinet', 'bed', 'chair', 'sofa', 'table', 'door', 'window', 'bookshelf', 'picture', 'counter', 'blinds', 'desk', 'shelves', 'curtain', 'dresser', 'pillow', 'mirror', 'floor', 
+'clothes', 'ceiling', 'books', 'refridgerator', 'television', 'paper', 'towel', 'shower curtain', 'box', 'whiteboard', 'person ', 'nightstand', 'toilet', 'sink', 'lamp', 'bathtub', 'bag', 'otherstructure', 'otherprop']
 def mask2pixel(mask): 
     h, w = mask.shape
     img_rgb = np.zeros((h,w,3), dtype = np.uint8)
-    for label, rgb in label_to_color.items(): 
-        img_rgb[mask == label, :] = rgb
+    for class_id, rgb in CLASS_IDS_TO_COLOR.items(): 
+        img_rgb[mask == class_id, :] = rgb
     return img_rgb
 def plot_preds(imgs, targets, preds): 
     #imgs: [N, 3, img_size, img_size]

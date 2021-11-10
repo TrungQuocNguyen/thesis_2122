@@ -4,20 +4,21 @@ import torch
 import shutil
 from torch.utils.tensorboard import SummaryWriter
 class BaseTrainer: 
-    def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, device):
+    def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, metric, device):
         self.cfg = cfg
         self.model = model
         self.loss_func = loss
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.optimizer = optimizer
+        self.metric = metric
         self.device = device
         self.epochs = cfg["epochs"]
         self.log_nth = cfg["log_nth"]
         self.single_sample = cfg["single_sample"]
         self.add_figure_tensorboard = cfg["add_figure_tensorboard"]
         self.start_epoch = 0
-        self.best_acc = 0
+        self.best_miou = 0
 
         if cfg["load_path"]:
             checkpoint_path = cfg["load_path"]
@@ -25,7 +26,7 @@ class BaseTrainer:
                 print("Loading checkpoint '{}'".format(checkpoint_path))
                 checkpoint = torch.load(checkpoint_path)
                 self.start_epoch = checkpoint["epoch"]
-                self.best_acc = checkpoint["best_acc"]
+                self.best_miou = checkpoint["best_miou"]
                 self.model.load_state_dict(checkpoint["state_dict"])
                 self.optimizer.load_state_dict(checkpoint["optimizer"])
 
@@ -51,13 +52,13 @@ class BaseTrainer:
         for epoch in range(self.start_epoch, self.epochs):
             self._train_epoch(epoch)
             if not self.single_sample: 
-                val_acc = self._val_epoch(epoch)
-                is_best = val_acc > self.best_acc
-                self.best_acc = max(val_acc, self.best_acc)
+                miou = self._val_epoch(epoch)
+                is_best = miou > self.best_miou
+                self.best_miou = max(miou, self.best_miou)
                 self.save_checkpoint({
                     'epoch': epoch+1, 
                     'state_dict': self.model.state_dict(), 
-                    'best_acc': self.best_acc, 
+                    'best_miou': self.best_miou, 
                     'optimizer': self.optimizer.state_dict(),
                 }, is_best)
 
