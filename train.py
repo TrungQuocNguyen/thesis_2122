@@ -13,10 +13,10 @@ def main(config):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")   
 
     trainset = ScanNet2D(config["train_loader"])
-    train_loader = DataLoader(trainset, batch_size = config["train_loader"]["batch_size"],shuffle = config["train_loader"]["shuffle"], num_workers = config["train_loader"]["num_workers"])
+    train_loader = DataLoader(trainset, batch_size = config["train_loader"]["batch_size"],shuffle = config["train_loader"]["shuffle"], num_workers = config["train_loader"]["num_workers"], pin_memory= True)
 
     valset = ScanNet2D(config["val_loader"])
-    val_loader = DataLoader(valset, batch_size = config["val_loader"]["batch_size"],shuffle = config["val_loader"]["shuffle"], num_workers = config["val_loader"]["num_workers"])
+    val_loader = DataLoader(valset, batch_size = config["val_loader"]["batch_size"],shuffle = config["val_loader"]["shuffle"], num_workers = config["val_loader"]["num_workers"], pin_memory= True)
     
     model = ENet(config["models"])
     print_params(model)

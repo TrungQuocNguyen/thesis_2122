@@ -12,7 +12,7 @@ def main(config):
     print('Testing trained ENet for 2D Semantic Segmentation task on ScanNet...')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
     testset = ScanNet2D(config["test_loader"])
-    test_loader = DataLoader(testset, batch_size = config["test_loader"]["batch_size"],shuffle = config["test_loader"]["shuffle"], num_workers = config["test_loader"]["num_workers"])
+    test_loader = DataLoader(testset, batch_size = config["test_loader"]["batch_size"],shuffle = config["test_loader"]["shuffle"], num_workers = config["test_loader"]["num_workers"], pin_memory= True)
     model = ENet(config["models"])
 
     checkpoint = torch.load(config["models"]["load_path"])
