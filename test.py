@@ -21,7 +21,7 @@ def main(config):
     model.to(device)
     model.eval()
     loss_fn = torch.nn.CrossEntropyLoss(ignore_index = config["ignore_index"])
-    metric = IoU(num_classes=config["models"]["num_classes"], ignore_index=config["ignore_index"])
+    metric = IoU(num_classes=config["models"]["num_classes"], ignore_index=config["IoU_ignore_index"])
     metric.reset()
     val_losses = []
     val_accs = []

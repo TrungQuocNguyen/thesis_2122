@@ -24,8 +24,8 @@ def main(config):
 
     loss = nn.CrossEntropyLoss(ignore_index = config["ignore_index"])
 
-    optimizer = optim.Adam(model.parameters(), lr = config["optimizer"]["learning_rate"])
-    metric = IoU(num_classes=config["models"]["num_classes"], ignore_index=config["ignore_index"])
+    optimizer = optim.Adam(model.parameters(), lr = config["optimizer"]["learning_rate"], weight_decay= config["optimizer"]["weight_decay"])
+    metric = IoU(num_classes=config["models"]["num_classes"], ignore_index=config["IoU_ignore_index"])
 
     trainer = Trainer(config["trainer"], model, loss, train_loader, val_loader, optimizer, metric, device)
     trainer.train()
