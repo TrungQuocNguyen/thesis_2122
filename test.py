@@ -8,7 +8,11 @@ from models import ENet
 import numpy as np 
 from metric.iou import IoU
 from utils.helpers import CLASS_LABELS
+from utils.helpers import plot_preds
+from torch.utils.tensorboard import SummaryWriter
 def main(config): 
+    dir_name = os.path.basename(os.path.dirname(config["models"]["load_path"]))
+    writer = SummaryWriter(os.path.join("saved/test_results", dir_name))
     print('Testing trained ENet for 2D Semantic Segmentation task on ScanNet...')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
     testset = ScanNet2D(config["test_loader"])
@@ -25,11 +29,15 @@ def main(config):
     metric.reset()
     val_losses = []
     val_accs = []
+    mean = torch.tensor(config["test_loader"]["mean"]).reshape(1,3,1,1)
+    std = torch.tensor(config["test_loader"]["std"]).reshape(1,3,1,1)
     with torch.no_grad(): 
-        for (imgs, targets) in test_loader: 
-            loss, acc= _eval_step(imgs, targets, device, model, loss_fn, metric)
+        for i, (imgs, targets) in enumerate(test_loader, 0): 
+            loss, acc, preds= _eval_step(imgs, targets, device, model, loss_fn, metric)
             val_losses.append(loss)
             val_accs.append(acc)
+            if config["add_figure_tensorboard"]: 
+                    writer.add_figure('test predictions vs targets', plot_preds(imgs*std+mean, targets, preds), global_step =i)
     iou, miou = metric.value()
 
     val_loss, val_acc = np.mean(val_losses), np.mean(val_accs)
@@ -49,7 +57,7 @@ def _eval_step(imgs, targets, device, model, loss_fn, metric):
     target_mask = targets >0
     acc = np.mean((preds == targets)[target_mask].cpu().detach().numpy())
     metric.add(preds.detach(), targets.detach())
-    return loss, acc
+    return loss, acc, preds.cpu().detach()
 if __name__ =='__main__': 
     parser = argparse.ArgumentParser(description='PyTorch Training')
     parser.add_argument('-c', '--config', default='test_config.json',type=str,
