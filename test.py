@@ -11,8 +11,9 @@ from utils.helpers import CLASS_LABELS
 from utils.helpers import plot_preds
 from torch.utils.tensorboard import SummaryWriter
 def main(config): 
-    dir_name = os.path.basename(os.path.dirname(config["models"]["load_path"]))
-    writer = SummaryWriter(os.path.join("saved/test_results", dir_name))
+    if config["add_figure_tensorboard"]: 
+        dir_name = os.path.basename(os.path.dirname(config["models"]["load_path"]))
+        writer = SummaryWriter(os.path.join("saved/test_results", dir_name))
     print('Testing trained ENet for 2D Semantic Segmentation task on ScanNet...')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
     testset = ScanNet2D(config["test_loader"])
