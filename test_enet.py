@@ -61,7 +61,7 @@ def _eval_step(imgs, targets, device, model, loss_fn, metric):
     return loss, acc, preds.cpu().detach()
 if __name__ =='__main__': 
     parser = argparse.ArgumentParser(description='PyTorch Training')
-    parser.add_argument('-c', '--config', default='test_enet_config.json',type=str,
+    parser.add_argument('-c', '--config', default='experiments/cfgs/test_enet.json',type=str,
                         help='Path to the config file (default: config.json)')
     args = parser.parse_args()
     config = json.load(open(args.config))

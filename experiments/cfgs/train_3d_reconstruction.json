@@ -1,0 +1,8 @@
+{
+    "TRAIN_FILELIST": "experiments/filelists/ScanNet/v2/train.txt",
+    "VAL_FILELIST": "experiments/filelists/ScanNet/v2/val_chunk.txt",
+    "TRAINVAL_FILELIST": "experiments/filelists/ScanNet/v2/trainval.txt",
+    "TEST_FILELIST": "experiments/filelists/ScanNet/v2/val_scene.txt"
+    
+
+}
