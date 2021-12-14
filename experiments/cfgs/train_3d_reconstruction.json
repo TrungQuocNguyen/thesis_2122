@@ -2,7 +2,21 @@
     "TRAIN_FILELIST": "experiments/filelists/ScanNet/v2/train.txt",
     "VAL_FILELIST": "experiments/filelists/ScanNet/v2/val_chunk.txt",
     "TRAINVAL_FILELIST": "experiments/filelists/ScanNet/v2/trainval.txt",
-    "TEST_FILELIST": "experiments/filelists/ScanNet/v2/val_scene.txt"
-    
-
+    "TEST_FILELIST": "experiments/filelists/ScanNet/v2/val_scene.txt", 
+    "TRUNCATED": 3.0, 
+    "FLIP_TSDF": false, 
+    "LOG_TSDF": false, 
+    "BASE_IMAGE_PATH": "/mnt/raid/tnguyen/3dsis/frames_square",
+    "IMAGE_TYPE": "color",
+    "IMAGE_EXT": ".jpg", 
+    "DEPTH_SHAPE": [328, 256], 
+    "IMAGE_SHAPE": [328, 256], 
+    "COLOR_MEAN": [0.496342, 0.466664, 0.440796],
+    "COLOR_STD":  [0.277856, 0.28623, 0.291129], 
+    "BATCH_SIZE": 8,
+    "NUM_IMAGES": 7, 
+    "optimizer": {
+        "learning_rate": 1e-3, 
+        "weight_decay": 0
+    }
 }
