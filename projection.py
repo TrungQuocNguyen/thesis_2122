@@ -127,7 +127,9 @@ class Projection(Function):
     @staticmethod
     # bias is an optional argument
     def forward(ctx, label, lin_indices_3d, lin_indices_2d, volume_dims):
-        ctx.save_for_backward(lin_indices_3d, lin_indices_2d)
+        #label: [3,256, 328]
+        h, w = label.shape[1], label.shape[2]
+        ctx.save_for_backward(lin_indices_3d, lin_indices_2d, h, w)
         num_label_ft = 1 if len(label.shape) == 2 else label.shape[0]
         output = label.new(num_label_ft, volume_dims[2], volume_dims[1], volume_dims[0]).fill_(0)
         num_ind = lin_indices_3d[0]
@@ -145,8 +147,8 @@ class Projection(Function):
         # optional inputs.
         grad_label = grad_output.clone()
         num_ft = grad_output.shape[0]
-        grad_label.data.resize_(num_ft, 32, 41)
-        lin_indices_3d, lin_indices_2d = ctx.saved_variables
+        lin_indices_3d, lin_indices_2d, h, w = ctx.saved_variables
+        grad_label.data.resize_(num_ft, h, w)
         num_ind = lin_indices_3d.data[0]
         grad_label.data.view(num_ft, -1).index_copy_(1, lin_indices_2d.data[1:1+num_ind], torch.index_select(grad_output.data.contiguous().view(num_ft, -1), 1, lin_indices_3d.data[1:1+num_ind]))
         #raw_input('sdflkj')
