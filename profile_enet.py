@@ -2,9 +2,9 @@ from torch.profiler.profiler import profile
 from datasets import ScanNet2D
 from torch.utils.data import DataLoader
 from models import ENet
+from utils.helpers import print_params
 import torch.nn as nn
 import torch.optim as optim
-from trainer import Trainer
 import torch
 import json 
 import argparse
@@ -28,7 +28,7 @@ def main(config):
 
     with torch.profiler.profile(
         schedule= torch.profiler.schedule(skip_first=3, wait = 3, warmup = 1, active= 3, repeat = 2 ), 
-        on_trace_ready= torch.profiler.tensorboard_trace_handler('./saved/profiler'), 
+        on_trace_ready= torch.profiler.tensorboard_trace_handler('./saved/profiler/enet'), 
         record_shapes= True, 
         with_stack= True, 
         profile_memory= True
@@ -48,11 +48,6 @@ def _train_step(imgs, targets, device, model, loss_func, optimizer):
         loss = loss_func(outputs, targets)
         loss.backward()
         optimizer.step()
-def print_params(model): 
-    total_params = sum(p.numel() for p in model.parameters())
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print('Total params: %d' %(total_params))
-    print('Trainable params: %d' %(trainable_params))
 
 if __name__ =='__main__': 
     parser = argparse.ArgumentParser(description='Run Pytorch Profiler')

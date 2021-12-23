@@ -1,8 +1,6 @@
 {
-    "TRAIN_FILELIST": "experiments/filelists/ScanNet/v2/train.txt",
-    "VAL_FILELIST": "experiments/filelists/ScanNet/v2/val_chunk.txt",
-    "TRAINVAL_FILELIST": "experiments/filelists/ScanNet/v2/trainval.txt",
-    "TEST_FILELIST": "experiments/filelists/ScanNet/v2/val_scene.txt", 
+    "TRAIN_FILELIST": "experiments/filelists/ScanNet/v2/1_chunk.txt",
+    "VAL_FILELIST": "experiments/filelists/ScanNet/v2/1_chunk.txt",
     "TRUNCATED": 3.0, 
     "FLIP_TSDF": false, 
     "LOG_TSDF": false, 
@@ -25,13 +23,13 @@
     "mx": 319.5, 
     "my": 239.5,
     "trainer": {
-        "epochs": 1500,
-        "log_nth": 10,
-        "single_sample" : false, 
+        "epochs": 5000,
+        "log_nth": 1,
+        "single_sample" : true, 
         "load_path": ""
     }, 
     "optimizer": {
-        "learning_rate": 1e-3, 
+        "learning_rate": 2e-4, 
         "weight_decay": 0
     }
 }

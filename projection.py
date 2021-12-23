@@ -3,13 +3,14 @@ import torch
 from torch.autograd import Function
 
 class ProjectionHelper():
-    def __init__(self, intrinsic, depth_min, depth_max, image_dims, volume_dims, voxel_size):
+    def __init__(self, intrinsic, depth_min, depth_max, image_dims, volume_dims, voxel_size, device):
         self.intrinsic = intrinsic
         self.depth_min = depth_min
         self.depth_max = depth_max
         self.image_dims = image_dims
         self.volume_dims = volume_dims
         self.voxel_size = voxel_size
+        self.device = device
 
     # 2d with depth map to 3d
     def depth_to_skeleton(self, ux, uy, depth):
@@ -41,10 +42,10 @@ class ProjectionHelper():
         pu = torch.round(torch.bmm(world_to_grid.repeat(8, 1, 1), torch.ceil(p)))
         bbox_min0, _ = torch.min(pl[:, :3, 0], 0)
         bbox_min1, _ = torch.min(pu[:, :3, 0], 0)
-        bbox_min = np.minimum(bbox_min0, bbox_min1)
+        bbox_min = np.minimum(bbox_min0.cpu(), bbox_min1.cpu())
         bbox_max0, _ = torch.max(pl[:, :3, 0], 0)
         bbox_max1, _ = torch.max(pu[:, :3, 0], 0) 
-        bbox_max = np.maximum(bbox_max0, bbox_max1)
+        bbox_max = np.maximum(bbox_max0.cpu(), bbox_max1.cpu())
         return bbox_min, bbox_max
 
 
@@ -56,17 +57,17 @@ class ProjectionHelper():
         world_to_camera = torch.inverse(camera_to_world)
         grid_to_world = torch.inverse(world_to_grid)
         voxel_bounds_min, voxel_bounds_max = self.compute_frustum_bounds(world_to_grid, camera_to_world)
-        voxel_bounds_min = np.maximum(voxel_bounds_min, 0).cuda().float() if depth.is_cuda else np.maximum(voxel_bounds_min, 0).cpu().float()
-        voxel_bounds_max = np.minimum(voxel_bounds_max, self.volume_dims).cuda().float() if depth.is_cuda else np.minimum(voxel_bounds_max, self.volume_dims).cpu().float()
+        voxel_bounds_min = np.maximum(voxel_bounds_min, 0).to(self.device).float()
+        voxel_bounds_max = np.minimum(voxel_bounds_max, self.volume_dims).to(self.device).float()
 
         # coordinates within frustum bounds
         # TODO python opt for this part instead of lua/torch opt?
         lin_ind_volume = torch.arange(0, self.volume_dims[0]*self.volume_dims[1]*self.volume_dims[2], out=torch.LongTensor())
-        lin_ind_volume = lin_ind_volume.cuda() if depth.is_cuda else lin_ind_volume.cpu()
+        lin_ind_volume = lin_ind_volume.to(self.device)
         coords = camera_to_world.new(4, lin_ind_volume.size(0))
-        coords[2] = lin_ind_volume / (self.volume_dims[0]*self.volume_dims[1])
+        coords[2] = (lin_ind_volume / (self.volume_dims[0]*self.volume_dims[1])).int()
         tmp = lin_ind_volume - (coords[2]*self.volume_dims[0]*self.volume_dims[1]).long()
-        coords[1] = tmp / self.volume_dims[0]
+        coords[1] = (tmp / self.volume_dims[0]).int()
         coords[0] = torch.remainder(tmp, self.volume_dims[0])
         coords[3].fill_(1)
         mask_frustum_bounds = torch.ge(coords[0], voxel_bounds_min[0]) * torch.ge(coords[1], voxel_bounds_min[1]) * torch.ge(coords[2], voxel_bounds_min[2])
@@ -76,9 +77,9 @@ class ProjectionHelper():
             return None
         lin_ind_volume = lin_ind_volume[mask_frustum_bounds]
         coords = coords.resize_(4, lin_ind_volume.size(0))
-        coords[2] = lin_ind_volume / (self.volume_dims[0]*self.volume_dims[1])
+        coords[2] = (lin_ind_volume / (self.volume_dims[0]*self.volume_dims[1])).int()
         tmp = lin_ind_volume - (coords[2]*self.volume_dims[0]*self.volume_dims[1]).long()
-        coords[1] = tmp / self.volume_dims[0]
+        coords[1] = (tmp / self.volume_dims[0]).int()
         coords[0] = torch.remainder(tmp, self.volume_dims[0])
         coords[3].fill_(1)
 

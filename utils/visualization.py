@@ -132,7 +132,7 @@ def write_mask_pointcloud(mask, output_file):
                     verts.extend(box_verts)
     write_ply(verts, None, None, output_file)
 
-def write_mask(mask, output_file):
+def write_mask(mask, output_file, mode):
     """
     mask: numpy array (x,y,z), in which instance/label id
     output_file: string
@@ -183,10 +183,10 @@ def write_mask(mask, output_file):
     for z in range(mask.shape[2]):
         for y in range(mask.shape[1]):
             for x in range(mask.shape[0]):
-                if mask[x, y, z] > 0:
+                if (mask[x, y, z] > 0).any():
                     box_min = (np.array([x, y, z]) - 0.05)*scale + offset
                     box_max = (np.array([x, y, z]) + 0.95)*scale + offset
-                    box_verts, box_color, box_ind = make_voxel_mesh(box_min, box_max, np.array(create_color_palette()[int(mask[x,y,z]%41)])/255.0)
+                    box_verts, box_color, box_ind = make_voxel_mesh(box_min, box_max, np.array(create_color_palette()[int(mask[x,y,z]%41)] if mode == 'label' else mask[x,y,z])/255.0)
                     cur_num_verts = len(verts)
                     box_ind = [x + cur_num_verts for x in box_ind]
                     verts.extend(box_verts)

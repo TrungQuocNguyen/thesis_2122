@@ -1,5 +1,7 @@
+import math
 import numpy as np
 import matplotlib.pyplot as plt
+import torch 
 import torch.nn as nn
 CLASS_IDS_TO_COLOR = {
     0: [0,0,0],  # unannotated: black
@@ -74,11 +76,46 @@ def plot_preds(imgs, targets, preds):
 def initialize_weights(*models):
     for model in models:
         for m in model.modules():
-            if isinstance(m, nn.Conv2d):
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv3d) or isinstance(m, nn.ConvTranspose3d):
                 nn.init.kaiming_normal_(m.weight.data, nonlinearity='relu')
-            elif isinstance(m, nn.BatchNorm2d):
+            elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
                 m.weight.data.fill_(1.)
                 m.bias.data.fill_(1e-4)
             elif isinstance(m, nn.Linear):
                 m.weight.data.normal_(0.0, 0.0001)
                 m.bias.data.zero_()
+def init_weights(m):
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv3d) or isinstance(m, nn.ConvTranspose3d):
+        nn.init.kaiming_normal_(m.weight.data, nonlinearity='relu')
+    elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
+        m.weight.data.fill_(1.)
+        m.bias.data.fill_(1e-4)
+    elif isinstance(m, nn.Linear):
+        m.weight.data.normal_(0.0, 0.0001)
+        m.bias.data.zero_()
+def print_params(model): 
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print('Total params: %d' %(total_params))
+    print('Trainable params: %d' %(trainable_params))
+
+def make_intrinsic(fx, fy, mx, my):
+    intrinsic = torch.eye(4)
+    intrinsic[0][0] = fx
+    intrinsic[1][1] = fy
+    intrinsic[0][2] = mx
+    intrinsic[1][2] = my
+    return intrinsic
+
+
+# create camera intrinsics
+def adjust_intrinsic(intrinsic, intrinsic_image_dim, image_dim):
+    if intrinsic_image_dim == image_dim:
+        return intrinsic
+    resize_width = int(math.floor(image_dim[1] * float(intrinsic_image_dim[0]) / float(intrinsic_image_dim[1])))
+    intrinsic[0,0] *= float(resize_width)/float(intrinsic_image_dim[0])
+    intrinsic[1,1] *= float(image_dim[1])/float(intrinsic_image_dim[1])
+    # account for cropping here
+    intrinsic[0,2] *= float(image_dim[0]-1)/float(intrinsic_image_dim[0]-1)
+    intrinsic[1,2] *= float(image_dim[1]-1)/float(intrinsic_image_dim[1]-1)
+    return intrinsic

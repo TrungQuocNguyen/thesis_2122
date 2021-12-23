@@ -100,17 +100,24 @@ class ScanNet2D3D(Dataset):
             trunc_data = np.clip(data, -self.cfg["TRUNCATED"], self.cfg["TRUNCATED"])
             trunc_abs_data = np.abs(trunc_data)
             trunc_abs_data_flip = self.cfg["TRUNCATED"] - trunc_abs_data
-            data = np.concatenate([trunc_abs_data_flip, np.greater(data, -1)], 0)
+            trunc_abs_data_flip[data < 0] *= -1
+            data = trunc_abs_data_flip
+            #data = np.concatenate([trunc_abs_data_flip, np.greater(data, -1)], 0)
         elif self.cfg["LOG_TSDF"]:
             trunc_data = np.clip(data, -self.cfg["TRUNCATED"], self.cfg["TRUNCATED"])
             trunc_abs_data = np.abs(trunc_data)
             trunc_abs_data_log = np.log(trunc_abs_data)
-            data = np.concatenate([trunc_abs_data_log, np.greater(data, -1)], 0)
+            trunc_abs_data_log[data < 0] *=-1
+            data = trunc_abs_data_log
+            #data = np.concatenate([trunc_abs_data_log, np.greater(data, -1)], 0)
         else:
             trunc_data = np.clip(data, -self.cfg["TRUNCATED"], self.cfg["TRUNCATED"])
-            data = trunc_data
-            trunc_abs_data = np.abs(trunc_data)
-            data = np.concatenate([trunc_abs_data, np.greater(data, 0)], 0) # (2,96,48,96)
+            mask = abs(trunc_data)< 1
+            data = np.zeros((1, dimX, dimY, dimZ)).astype(np.float32) # (1, 96, 48, 96)
+            data[mask] = 1.0
+            #data = trunc_data
+        #    trunc_abs_data = np.abs(trunc_data)
+        #    data = np.concatenate([trunc_abs_data, np.greater(data, 0)], 0) # (2,96,48,96)
         #----------------------------
         # read redundant data (used for segmentation task, not for reconstruction)
         #----------------------------
