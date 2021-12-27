@@ -26,14 +26,15 @@ def train(cfg):
 
 
     model  = Dense3DNetwork(cfg, num_images)
-    #model.apply(init_weights)
+    model.apply(init_weights)
     print_params(model)
     model.to(device)
 
     loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([41.58], device = 'cuda'))
     #loss = nn.L1Loss()
 
-    optimizer = optim.Adam(model.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
+    #optimizer = optim.Adam(model.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
+    optimizer = optim.SGD(model.parameters(), lr  = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"], momentum = 0, nesterov= False)
     
     
 

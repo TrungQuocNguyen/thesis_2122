@@ -11,9 +11,9 @@ class Bottleneck(nn.Module):
         self.conv2 = nn.Conv3d(planes, planes, kernel_size=3, stride=1, padding=1)
         self.conv3 = nn.Conv3d(planes, inplanes, kernel_size=1)
 
-        self.bn1 = nn.BatchNorm3d(planes)
-        self.bn2 = nn.BatchNorm3d(planes)
-        self.bn3 = nn.BatchNorm3d(inplanes)
+        #self.bn1 = nn.BatchNorm3d(planes)
+        #self.bn2 = nn.BatchNorm3d(planes)
+        #self.bn3 = nn.BatchNorm3d(inplanes)
 
         self.relu = nn.ReLU(inplace=True)
         self.stride = stride
@@ -22,17 +22,17 @@ class Bottleneck(nn.Module):
         residual = x
 
         out = self.conv1(x)
-        out = self.bn1(out)
+        #out = self.bn1(out)
         out = self.relu(out)
 
         out = self.conv2(out)
-        out = self.bn2(out)
+        #out = self.bn2(out)
         out = self.relu(out)
 
         out = self.conv3(out)
 
         out += residual
-        out = self.bn3(out)
+        #out = self.bn3(out)
         out = self.relu(out)
         return out
 
@@ -43,32 +43,32 @@ class Dense3DNetwork(nn.Module):
                 self.cfg = cfg
                 self.encoder  = nn.Sequential(
                         nn.Conv3d(num_images*3, 64, kernel_size=(2, 2, 2), stride=(2, 2, 2), padding=(0, 0, 0), bias=False), # [N, 64, 48, 24, 48]
-                        nn.BatchNorm3d(64),
+                        #nn.BatchNorm3d(64),
                         nn.ReLU(True),
                         Bottleneck(64, 32, stride=1), # [N, 64, 48, 24, 48]
                         nn.MaxPool3d(3, 1, 1), # [N, 64, 48, 24, 48]
                         nn.Conv3d(64, 128, kernel_size=(2, 2, 2), stride=(2, 2, 2), padding=(0, 0, 0), bias=False), # [N, 128, 24, 12, 24]
-                        nn.BatchNorm3d(128),
+                        #nn.BatchNorm3d(128),
                         nn.ReLU(True),
                         Bottleneck(128, 32, stride=1), # [N, 128, 24, 12, 24 ]
                         nn.MaxPool3d(3, 1, 1), # [N, 128, 24, 12, 24],
                         nn.Conv3d(128, 128, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1), bias=False), # [N, 128, 24, 12, 24 ]
-                        nn.BatchNorm3d(128),
+                        #nn.BatchNorm3d(128),
                         nn.ReLU(True),
                         Bottleneck(128, 64, stride=1), # [N, 128, 24, 12, 24 ]
                         Bottleneck(128, 64, stride=1), # [N, 128, 24, 12, 24 ]
                         nn.MaxPool3d(3, 1, 1))  # [N, 128, 24, 12, 24 ]
                 self.decoder = nn.Sequential(
                         nn.ConvTranspose3d(128, 128, kernel_size= (3,3,3), stride= (1,1,1), padding= (1,1,1), bias =False),  # [N, 128, 24, 12, 24]
-                        nn.BatchNorm3d(128),
+                        #nn.BatchNorm3d(128),
                         nn.ReLU(True), 
                         Bottleneck(128, 64, stride = 1),
                         nn.ConvTranspose3d(128, 64, kernel_size= (2,2,2), stride= (2,2,2), padding = (0,0,0), bias =False),  # [N, 64, 48, 24, 48]
-                        nn.BatchNorm3d(64),
+                        #nn.BatchNorm3d(64),
                         nn.ReLU(True),  
                         Bottleneck(64, 32, stride = 1),
                         nn.ConvTranspose3d(64, 32, kernel_size= (2,2,2), stride= (2,2,2), padding = (0,0,0), bias =False),  #  [N, 32, 96, 48, 96]
-                        nn.BatchNorm3d(32),
+                        #nn.BatchNorm3d(32),
                         nn.ReLU(True), 
                         Bottleneck(32, 16, stride = 1), # [N, 32, 96, 48, 96]
                         nn.Conv3d(32, 1, kernel_size= (1,1,1), stride= (1,1,1), padding= (0,0,0))) # [N, 1, 96, 48, 96]
@@ -118,7 +118,7 @@ class SurfaceNet(nn.Module):
                 self.upconv1 = nn.Sequential(
                         nn.ConvTranspose3d(32, 16, kernel_size=(1, 1, 1), padding = 0 ),
                         nn.BatchNorm3d(16), 
-                        nn.ReLU(True))  #[N, 16, 96, 48, 96]
+                        nn.Sigmoid())  #[N, 16, 96, 48, 96]
 
                 self.pooling1 = nn.MaxPool3d(kernel_size=2, stride=2) # [N, 32, 48, 24, 48]
 
@@ -137,7 +137,7 @@ class SurfaceNet(nn.Module):
                 self.upconv2 = nn.Sequential(
                         nn.ConvTranspose3d(80, 16, kernel_size=(1, 1, 1), padding = 0, stride=2, output_padding=1 ),
                         nn.BatchNorm3d(16), 
-                        nn.ReLU(True))  #[N, 16, 96, 48, 96]
+                        nn.Sigmoid())  #[N, 16, 96, 48, 96]
                 
                 self.pooling2 = nn.MaxPool3d(kernel_size=2, stride=2) # [N, 80, 24, 12, 24]
 
@@ -156,7 +156,7 @@ class SurfaceNet(nn.Module):
                 self.upconv3 = nn.Sequential(
                         nn.ConvTranspose3d(160, 16, kernel_size=(1, 1, 1), padding = 0, stride=4, output_padding=3 ),
                         nn.BatchNorm3d(16), 
-                        nn.ReLU(True))  #[N, 16, 96, 48, 96]
+                        nn.Sigmoid())  #[N, 16, 96, 48, 96]
                 self.conv4 = nn.Sequential(
                         nn.Conv3d(160, 300, kernel_size=(3, 3, 3), padding =2, stride=1, dilation=2), 
                         nn.BatchNorm3d(300), 
@@ -172,7 +172,7 @@ class SurfaceNet(nn.Module):
                 self.upconv4 = nn.Sequential(
                         nn.ConvTranspose3d(300, 16, kernel_size=(1, 1, 1), padding = 0, stride=4, output_padding=3 ),
                         nn.BatchNorm3d(16), 
-                        nn.ReLU(True)) # [N, 16, 96 , 48, 96]
+                        nn.Sigmoid()) # [N, 16, 96 , 48, 96]
         
                 self.conv5 = nn.Sequential(
                         nn.Conv3d(64, 100, kernel_size=(3, 3, 3), padding =1), 
