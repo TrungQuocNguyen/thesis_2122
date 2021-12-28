@@ -4,6 +4,7 @@ from torch.nn.modules import padding
 from torch.nn.modules.activation import ReLU
 from torch.nn.modules.batchnorm import BatchNorm3d
 from projection import Projection
+from utils.helpers import initialize_weights
 class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
@@ -72,7 +73,7 @@ class Dense3DNetwork(nn.Module):
                         nn.ReLU(True), 
                         Bottleneck(32, 16, stride = 1), # [N, 32, 96, 48, 96]
                         nn.Conv3d(32, 1, kernel_size= (1,1,1), stride= (1,1,1), padding= (0,0,0))) # [N, 1, 96, 48, 96]
-
+                initialize_weights(self)
 
         def forward(self, blobs, device): 
                 #blobs['data']: [batch_size, 2, 96, 48, 96]

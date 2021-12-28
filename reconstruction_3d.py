@@ -26,7 +26,7 @@ def train(cfg):
 
 
     model  = Dense3DNetwork(cfg, num_images)
-    model.apply(init_weights)
+    #model.apply(init_weights)
     print_params(model)
     model.to(device)
 
