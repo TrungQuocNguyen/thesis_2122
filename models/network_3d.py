@@ -43,37 +43,38 @@ class Dense3DNetwork(nn.Module):
                 super(Dense3DNetwork, self).__init__()
                 self.cfg = cfg
                 self.encoder  = nn.Sequential(
-                        nn.Conv3d(num_images*3, 64, kernel_size=(2, 2, 2), stride=(2, 2, 2), padding=(0, 0, 0), bias=False), # [N, 64, 48, 24, 48]
+                        nn.Conv3d(num_images*3, 64, kernel_size=(2, 2, 2), stride=(2, 2, 2), padding=(0, 0, 0)), # [N, 64, 48, 24, 48]
                         #nn.BatchNorm3d(64),
                         nn.ReLU(True),
                         Bottleneck(64, 32, stride=1), # [N, 64, 48, 24, 48]
                         nn.MaxPool3d(3, 1, 1), # [N, 64, 48, 24, 48]
-                        nn.Conv3d(64, 128, kernel_size=(2, 2, 2), stride=(2, 2, 2), padding=(0, 0, 0), bias=False), # [N, 128, 24, 12, 24]
+                        nn.Conv3d(64, 128, kernel_size=(2, 2, 2), stride=(2, 2, 2), padding=(0, 0, 0)), # [N, 128, 24, 12, 24]
                         #nn.BatchNorm3d(128),
                         nn.ReLU(True),
                         Bottleneck(128, 32, stride=1), # [N, 128, 24, 12, 24 ]
                         nn.MaxPool3d(3, 1, 1), # [N, 128, 24, 12, 24],
-                        nn.Conv3d(128, 128, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1), bias=False), # [N, 128, 24, 12, 24 ]
+                        nn.Conv3d(128, 128, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)), # [N, 128, 24, 12, 24 ]
                         #nn.BatchNorm3d(128),
                         nn.ReLU(True),
                         Bottleneck(128, 64, stride=1), # [N, 128, 24, 12, 24 ]
                         Bottleneck(128, 64, stride=1), # [N, 128, 24, 12, 24 ]
                         nn.MaxPool3d(3, 1, 1))  # [N, 128, 24, 12, 24 ]
                 self.decoder = nn.Sequential(
-                        nn.ConvTranspose3d(128, 128, kernel_size= (3,3,3), stride= (1,1,1), padding= (1,1,1), bias =False),  # [N, 128, 24, 12, 24]
+                        nn.ConvTranspose3d(128, 128, kernel_size= (3,3,3), stride= (1,1,1), padding= (1,1,1)),  # [N, 128, 24, 12, 24]
                         #nn.BatchNorm3d(128),
                         nn.ReLU(True), 
                         Bottleneck(128, 64, stride = 1),
-                        nn.ConvTranspose3d(128, 64, kernel_size= (2,2,2), stride= (2,2,2), padding = (0,0,0), bias =False),  # [N, 64, 48, 24, 48]
+                        nn.ConvTranspose3d(128, 64, kernel_size= (2,2,2), stride= (2,2,2), padding = (0,0,0)),  # [N, 64, 48, 24, 48]
                         #nn.BatchNorm3d(64),
                         nn.ReLU(True),  
                         Bottleneck(64, 32, stride = 1),
-                        nn.ConvTranspose3d(64, 32, kernel_size= (2,2,2), stride= (2,2,2), padding = (0,0,0), bias =False),  #  [N, 32, 96, 48, 96]
+                        nn.ConvTranspose3d(64, 32, kernel_size= (2,2,2), stride= (2,2,2), padding = (0,0,0)),  #  [N, 32, 96, 48, 96]
                         #nn.BatchNorm3d(32),
                         nn.ReLU(True), 
                         Bottleneck(32, 16, stride = 1), # [N, 32, 96, 48, 96]
-                        nn.Conv3d(32, 1, kernel_size= (1,1,1), stride= (1,1,1), padding= (0,0,0))) # [N, 1, 96, 48, 96]
+                        nn.Conv3d(32, 1, kernel_size= (3,3,3), stride= (1,1,1), padding= (1,1,1))) # [N, 1, 96, 48, 96]
                 initialize_weights(self)
+                nn.init.xavier_uniform_(self.decoder[9].weight)
 
         def forward(self, blobs, device): 
                 #blobs['data']: [batch_size, 2, 96, 48, 96]
