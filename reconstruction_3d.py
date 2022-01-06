@@ -1,5 +1,8 @@
 import argparse
 import json 
+import os
+import random
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,6 +10,17 @@ from models import Dense3DNetwork, SurfaceNet
 from datasets import ScanNet2D3D, get_dataloader
 from trainer import Trainer3DReconstruction
 from utils.helpers import print_params, make_intrinsic, adjust_intrinsic, init_weights
+
+seed_value= 1234
+# 1. Set `PYTHONHASHSEED` environment variable at a fixed value
+os.environ['PYTHONHASHSEED']=str(seed_value)
+# 2. Set `python` built-in pseudo-random generator at a fixed value
+random.seed(seed_value)
+# 3. Set `numpy` pseudo-random generator at a fixed value
+np.random.seed(seed_value)
+# 4. Set `pytorch` pseudo-random generator at a fixed value
+torch.manual_seed(seed_value)
+
 def train(cfg): 
     print('Training network for 3D reconstruction...')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")   
@@ -25,7 +39,7 @@ def train(cfg):
     intrinsic = adjust_intrinsic(intrinsic, [cfg["INTRINSIC_IMAGE_WIDTH"], cfg["INTRINSIC_IMAGE_HEIGHT"]], cfg["DEPTH_SHAPE"])
 
 
-    model  = Dense3DNetwork(cfg, num_images)
+    model  = SurfaceNet(cfg, num_images)
     #model.apply(init_weights)
     print_params(model)
     model.to(device)
