@@ -26,10 +26,11 @@
         "epochs": 5000,
         "log_nth": 1,
         "single_sample" : true, 
-        "load_path": ""
+        "load_path": "",
+        "plot_gradient": true
     }, 
     "optimizer": {
-        "learning_rate": 2e-4, 
+        "learning_rate": 5e-4, 
         "weight_decay": 0
     }
 }

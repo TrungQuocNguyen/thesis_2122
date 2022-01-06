@@ -1,5 +1,8 @@
 import os
 import datetime
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import numpy as np
 import torch
 import shutil
 from torch.utils.tensorboard import SummaryWriter
@@ -26,14 +29,14 @@ class BaseTrainer:
                 self.model.load_state_dict(self.checkpoint["state_dict"])
                 self.optimizer.load_state_dict(self.checkpoint["optimizer"])
 
-                dir_name = os.path.basename(os.path.dirname(checkpoint_path))
+                self.dir_name = os.path.basename(os.path.dirname(checkpoint_path))
             else:
                 print("No checkpoint found at {}".format(checkpoint_path))
         else: 
-            dir_name = datetime.datetime.now().strftime('%m-%d_%H-%M')
+            self.dir_name = datetime.datetime.now().strftime('%m-%d_%H-%M')
 
-        self.writer = SummaryWriter(os.path.join("saved/runs/3d_reconstruction", dir_name))
-        model_path = os.path.join("saved/models/3d_reconstruction", dir_name)
+        self.writer = SummaryWriter(os.path.join("saved/runs/3d_reconstruction", self.dir_name))
+        model_path = os.path.join("saved/models/3d_reconstruction", self.dir_name)
         if not os.path.exists(model_path): 
             os.makedirs(model_path)
         self.checkpoint_path =  os.path.join(model_path, 'checkpoint.pth.tar')
@@ -55,4 +58,45 @@ class BaseTrainer:
         if is_best:
             print("Saving best model path")
             shutil.copyfile(self.checkpoint_path, self.best_model_path)
-        
+    def plot_grad_flow(self,named_parameters, epoch):
+        '''Plots the gradients flowing through different layers in the net during training.
+        Can be used for checking for possible gradient vanishing / exploding problems.
+    
+        Usage: Plug this function in Trainer class after loss.backwards() as 
+        "plot_grad_flow(self.model.named_parameters())" to visualize the gradient flow'''
+        ave_grads = []
+        max_grads= []
+        layers = []
+        for n, p in named_parameters:
+            if(p.requires_grad) and ("bias" not in n):
+                if p.grad is not None:
+                    layers.append(n)
+                    ave_grads.append(p.grad.abs().mean().cpu())
+                    max_grads.append(p.grad.abs().max().cpu())
+                else:
+                    print(n)
+        figure = plt.figure(figsize = (26.5,14.5))
+        ax = figure.add_subplot(111)
+        ax.bar(np.arange(len(max_grads)), max_grads, alpha=0.4, lw=1, color="c")
+        ax.bar(np.arange(len(max_grads)), ave_grads, alpha=0.4, lw=1, color="b")
+
+        ax.hlines(0, 0, len(ave_grads)+1, lw=2, color="k" )
+        ax.set_xticks(range(0,len(ave_grads), 1))
+        ax.set_xticklabels(layers, rotation="vertical")
+
+        ax.set_xlim(left=0, right=len(ave_grads))
+        ax.set_ylim(bottom = -0.001, top=1) # zoom in on the lower gradient regions
+        ax.set_xlabel("Layers")
+        ax.set_ylabel("average gradient")
+        ax.set_title("Gradient flow")
+        ax.grid(True)
+        ax.legend([Line2D([0], [0], color="c", lw=4),
+                    Line2D([0], [0], color="b", lw=4),
+                    Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
+        figure.tight_layout()
+        plot_dir = os.path.join('saved/plot_gradient', self.dir_name)
+        if not os.path.exists(plot_dir):
+            os.makedirs(plot_dir)
+        plot_path = os.path.join(plot_dir, 'gradient_'+'epoch_' + str(epoch+1) + '.png')
+        figure.savefig(plot_path)
+        plt.close(figure)

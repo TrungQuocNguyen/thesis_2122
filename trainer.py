@@ -1,6 +1,7 @@
 from base import BaseTrainer
 import numpy as np 
 import torch
+import torch.nn as nn
 from utils.helpers import plot_preds
 from projection import ProjectionHelper
 class Trainer3DReconstruction(BaseTrainer): 
@@ -13,6 +14,8 @@ class Trainer3DReconstruction(BaseTrainer):
     def train(self): 
         for epoch in range(self.start_epoch, self.epochs):
             loss = self._train_epoch(epoch)
+            if self.cfg["trainer"]["plot_gradient"]: 
+                self.plot_grad_flow(self.model.named_parameters(), epoch)
             if not self.single_sample: 
                 loss = self._val_epoch(epoch)
             is_best = loss < self.best_loss

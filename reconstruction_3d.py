@@ -39,7 +39,7 @@ def train(cfg):
     intrinsic = adjust_intrinsic(intrinsic, [cfg["INTRINSIC_IMAGE_WIDTH"], cfg["INTRINSIC_IMAGE_HEIGHT"]], cfg["DEPTH_SHAPE"])
 
 
-    model  = SurfaceNet(cfg, num_images)
+    model  = Dense3DNetwork(cfg, num_images)
     #model.apply(init_weights)
     print_params(model)
     model.to(device)
