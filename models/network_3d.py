@@ -74,7 +74,7 @@ class Dense3DNetwork(nn.Module):
                         Bottleneck(32, 16, stride = 1), # [N, 32, 96, 48, 96]
                         nn.Conv3d(32, 1, kernel_size= (3,3,3), stride= (1,1,1), padding= (1,1,1))) # [N, 1, 96, 48, 96]
                 initialize_weights(self)
-                nn.init.xavier_uniform_(self.decoder[9].weight)
+                nn.init.xavier_uniform_(self.decoder[-1].weight)
 
         def forward(self, blobs, device): 
                 #blobs['data']: [batch_size, 2, 96, 48, 96]

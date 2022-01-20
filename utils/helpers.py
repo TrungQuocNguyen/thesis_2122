@@ -78,9 +78,9 @@ def initialize_weights(*models):
         for m in model.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv3d) or isinstance(m, nn.ConvTranspose3d):
                 nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
-            elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
-                m.weight.fill_(1.)
-                m.bias.fill_(1e-4)
+            #elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
+                #m.weight.fill_(1.)
+                #m.bias.fill_(1e-4)
             elif isinstance(m, nn.Linear):
                 m.weight.data.normal_(0.0, 0.0001)
                 m.bias.data.zero_()

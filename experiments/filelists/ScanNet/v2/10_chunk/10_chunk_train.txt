@@ -1,0 +1,10 @@
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0433_00__0___31.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0528_00__0___45.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0031_02__0___72.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0482_01__0___57.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0616_01__0___77.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0227_00__0___6.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0031_00__0___110.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0196_00__0___131.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0630_03__0___62.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0387_02__0___49.chunk

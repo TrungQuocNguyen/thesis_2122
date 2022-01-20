@@ -1,0 +1,4 @@
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0686_02__0___26.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0702_00__0___38.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0684_01__0___33.chunk
+/mnt/raid/tnguyen/3dsis/vox-5cm_sdf/chunk/scene0695_03__0___18.chunk
