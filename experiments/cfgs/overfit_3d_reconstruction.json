@@ -1,6 +1,6 @@
 {
-    "TRAIN_FILELIST": "experiments/filelists/ScanNet/v2/1_chunk.txt",
-    "VAL_FILELIST": "experiments/filelists/ScanNet/v2/1_chunk.txt",
+    "TRAIN_FILELIST": "experiments/filelists/ScanNet/v2/train_w5_surrounding_images.txt",
+    "VAL_FILELIST": "experiments/filelists/ScanNet/v2/val_w5_surrounding_images.txt",
     "TRUNCATED": 3.0, 
     "FLIP_TSDF": false, 
     "LOG_TSDF": false, 
@@ -11,7 +11,7 @@
     "IMAGE_SHAPE": [328, 256], 
     "COLOR_MEAN": [0.496342, 0.466664, 0.440796],
     "COLOR_STD":  [0.277856, 0.28623, 0.291129], 
-    "BATCH_SIZE": 8,
+    "BATCH_SIZE": 16,
     "NUM_IMAGES": 5, 
     "PROJ_DEPTH_MIN": 0.1, 
     "PROJ_DEPTH_MAX": 4.0,  
@@ -25,12 +25,13 @@
     "trainer": {
         "epochs": 5000,
         "log_nth": 1,
-        "single_sample" : true, 
+        "val_check_interval": 15, 
+        "single_sample" : false, 
         "load_path": "",
-        "plot_gradient": true
+        "plot_gradient": false
     }, 
     "optimizer": {
-        "learning_rate": 5e-4, 
+        "learning_rate": 3e-3, 
         "weight_decay": 0
     }
 }

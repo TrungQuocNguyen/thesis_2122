@@ -17,16 +17,6 @@ class Trainer3DReconstruction(BaseTrainer):
             #if epoch % 10 == 9: 
             #    if self.cfg["trainer"]["plot_gradient"]: 
             #        self.plot_grad_flow(self.model.named_parameters(), epoch)
-            if not self.single_sample: 
-                loss = self._val_epoch(epoch)
-            is_best = loss < self.best_loss
-            self.best_loss = min(loss, self.best_loss)
-            self.save_checkpoint({
-                'epoch': epoch+1, 
-                'state_dict': self.model.state_dict(), 
-                'best_loss': self.best_loss, 
-                'optimizer': self.optimizer.state_dict(),
-            }, is_best)
 
     def _train_epoch(self, epoch): 
         train_loss = AverageMeter()
@@ -54,7 +44,19 @@ class Trainer3DReconstruction(BaseTrainer):
                         val_loss = self._eval_step(blobs_val)
                     self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
                     print('[Iteration %d/%d] VAL loss: %.3f' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, val_loss))
-                    
+
+            if self.val_check_interval and i % self.val_check_interval ==  self.val_check_interval -1: 
+                if not self.single_sample: 
+                    loss = self._val_epoch(epoch)
+                is_best = loss < self.best_loss
+                self.best_loss = min(loss, self.best_loss)
+                self.save_checkpoint({
+                    'epoch': epoch+1, 
+                    'state_dict': self.model.state_dict(), 
+                    'best_loss': self.best_loss, 
+                    'optimizer': self.optimizer.state_dict(),
+                }, is_best)
+
         if self.log_nth and not self.single_sample: 
             print('[Epoch %d/%d] TRAIN loss: %.3f' %(epoch+1, self.epochs, train_loss.avg))
         return train_loss.avg

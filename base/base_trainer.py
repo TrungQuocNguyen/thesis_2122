@@ -17,6 +17,7 @@ class BaseTrainer:
         self.device = device
         self.epochs = cfg["trainer"]["epochs"]
         self.log_nth = cfg["trainer"]["log_nth"]
+        self.val_check_interval = cfg["trainer"]["val_check_interval"]
         self.single_sample = cfg["trainer"]["single_sample"]
         self.start_epoch = 0
 
