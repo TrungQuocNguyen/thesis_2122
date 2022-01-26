@@ -14,8 +14,9 @@ class Trainer3DReconstruction(BaseTrainer):
     def train(self): 
         for epoch in range(self.start_epoch, self.epochs):
             loss = self._train_epoch(epoch)
-            if self.cfg["trainer"]["plot_gradient"]: 
-                self.plot_grad_flow(self.model.named_parameters(), epoch)
+            #if epoch % 10 == 9: 
+            #    if self.cfg["trainer"]["plot_gradient"]: 
+            #        self.plot_grad_flow(self.model.named_parameters(), epoch)
             if not self.single_sample: 
                 loss = self._val_epoch(epoch)
             is_best = loss < self.best_loss
@@ -29,11 +30,14 @@ class Trainer3DReconstruction(BaseTrainer):
 
     def _train_epoch(self, epoch): 
         train_loss = AverageMeter()
-        self.model.train()
         for i, blobs in enumerate(self.train_loader, 0):
+            self.model.train()
             #blobs['data']: [N, 1, 96, 48, 96] (we only represent TSDF as 1 channel) N: batch_size
             batch_size = blobs['data'].shape[0]
-            self._voxel_pixel_association(blobs)
+            jump_flag = self._voxel_pixel_association(blobs)
+            if jump_flag:
+                print('error in train batch, skipping the current batch...') 
+                continue
             loss = self._train_step(blobs)
             train_loss.update(loss, batch_size)
             if self.log_nth and i % self.log_nth == self.log_nth-1: 
@@ -42,11 +46,15 @@ class Trainer3DReconstruction(BaseTrainer):
                 if not self.single_sample: 
                     self.model.eval()
                     with torch.no_grad(): 
-                        blobs = next(iter(self.val_loader))
-                        self._voxel_pixel_association(blobs)
-                        val_loss = self._eval_step(blobs)
+                        blobs_val = next(iter(self.val_loader))
+                        jump_flag = self._voxel_pixel_association(blobs_val)
+                        if jump_flag: 
+                            print('error in single validation batch, skipping the current batch...')
+                            continue
+                        val_loss = self._eval_step(blobs_val)
                     self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
                     print('[Iteration %d/%d] VAL loss: %.3f' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, val_loss))
+                    
         if self.log_nth and not self.single_sample: 
             print('[Epoch %d/%d] TRAIN loss: %.3f' %(epoch+1, self.epochs, train_loss.avg))
         return train_loss.avg
@@ -67,7 +75,10 @@ class Trainer3DReconstruction(BaseTrainer):
         with torch.no_grad(): 
             for blobs in self.val_loader:
                 batch_size = blobs['data'].shape[0] 
-                self._voxel_pixel_association(blobs)
+                jump_flag = self._voxel_pixel_association(blobs)
+                if jump_flag:
+                    print('error in validation batch, skipping the current batch...')
+                    continue
                 loss= self._eval_step(blobs)
                 val_loss.update(loss, batch_size)
         if self.log_nth:  
@@ -87,10 +98,17 @@ class Trainer3DReconstruction(BaseTrainer):
         proj_mapping = [[projection_helper.compute_projection(d.to(self.device), c.to(self.device), t.to(self.device)) for d, c, t in zip(blobs['nearest_images']['depths'][i], blobs['nearest_images']['poses'][i], blobs['nearest_images']['world2grid'][i])] for i in range(batch_size)]
         blobs['proj_ind_3d'] = []
         blobs['proj_ind_2d'] = []
+        jump_flag = False
         for i in range(batch_size):
-            proj_mapping0, proj_mapping1 = zip(*proj_mapping[i])
-            blobs['proj_ind_3d'].append(torch.stack(proj_mapping0)) # list of [max_num_images,96*48*96 + 1], total batch_size elements in the list 
-            blobs['proj_ind_2d'].append(torch.stack(proj_mapping1)) # list of [max_num_images,96*48*96 + 1], total batch_size elements in the list      
+            if None in proj_mapping[i]: #invalid sample
+                jump_flag = True
+                break
+        if  not jump_flag: 
+            for i in range(batch_size):
+                proj_mapping0, proj_mapping1 = zip(*proj_mapping[i])
+                blobs['proj_ind_3d'].append(torch.stack(proj_mapping0)) # list of [max_num_images,96*48*96 + 1], total batch_size elements in the list 
+                blobs['proj_ind_2d'].append(torch.stack(proj_mapping1)) # list of [max_num_images,96*48*96 + 1], total batch_size elements in the list      
+        return jump_flag
 
 
 class TrainerENet(BaseTrainer): 
