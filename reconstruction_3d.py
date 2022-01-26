@@ -44,7 +44,7 @@ def train(cfg):
     print_params(model)
     model.to(device)
 
-    loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([41.58], device = 'cuda'))
+    loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([44.5], device = 'cuda'))
     #loss = nn.L1Loss()
 
     #optimizer = optim.Adam(model.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
