@@ -89,7 +89,7 @@ class BaseTrainer:
         ax.set_xticklabels(layers, rotation="vertical")
 
         ax.set_xlim(left=0, right=len(ave_grads))
-        ax.set_ylim(bottom = -0.001, top=1) # zoom in on the lower gradient regions
+        ax.set_ylim(bottom = -0.001, top=0.02) # zoom in on the lower gradient regions
         ax.set_xlabel("Layers")
         ax.set_ylabel("average gradient")
         ax.set_title("Gradient flow")
