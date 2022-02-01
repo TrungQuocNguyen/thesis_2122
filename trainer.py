@@ -47,11 +47,12 @@ class Trainer3DReconstruction(BaseTrainer):
 
             if self.val_check_interval and i % self.val_check_interval ==  self.val_check_interval -1: 
                 if not self.single_sample: 
-                    loss = self._val_epoch(epoch)
+                    num_val_epoch = epoch*(len(self.train_loader)// self.val_check_interval) + i//self.val_check_interval +1
+                    loss = self._val_epoch(num_val_epoch)
                 is_best = loss < self.best_loss
                 self.best_loss = min(loss, self.best_loss)
                 self.save_checkpoint({
-                    'epoch': epoch+1, 
+                    'epoch': epoch, 
                     'state_dict': self.model.state_dict(), 
                     'best_loss': self.best_loss, 
                     'optimizer': self.optimizer.state_dict(),
@@ -66,6 +67,7 @@ class Trainer3DReconstruction(BaseTrainer):
         targets = blobs['data'].to(self.device) # [N, 1, 96, 48, 96] 
         preds = self.model(blobs, self.device) #[N, 1, 96, 48, 96]
         loss = self.loss_func(preds, targets)
+        self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
         return loss.item()
@@ -85,7 +87,7 @@ class Trainer3DReconstruction(BaseTrainer):
                 val_loss.update(loss, batch_size)
         if self.log_nth:  
             self.writer.add_scalar('val_epoch_loss', val_loss.avg, global_step= epoch)
-            print('[Epoch %d/%d] VAL loss: %.3f' %(epoch+1, self.epochs, val_loss.avg))
+            print('[VAL epoch %d] VAL loss: %.3f' %(epoch, val_loss.avg))
         return val_loss.avg
 
     def _eval_step(self, blobs): 
