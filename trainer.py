@@ -20,7 +20,9 @@ class Trainer3DReconstruction(BaseTrainer):
 
     def _train_epoch(self, epoch): 
         train_loss = AverageMeter()
-        for i, blobs in enumerate(self.train_loader, 0):
+        val_iterator = iter(self.val_loader)
+        for i, batch in enumerate(self.train_loader, 0):
+            blobs = batch.data
             self.model.train()
             #blobs['data']: [N, 1, 96, 48, 96] (we only represent TSDF as 1 channel) N: batch_size
             batch_size = blobs['data'].shape[0]
@@ -36,12 +38,16 @@ class Trainer3DReconstruction(BaseTrainer):
                 if not self.single_sample: 
                     self.model.eval()
                     with torch.no_grad(): 
-                        blobs_val = next(iter(self.val_loader))
-                        jump_flag = self._voxel_pixel_association(blobs_val)
+                        try: 
+                            blobs = next(val_iterator).data
+                        except StopIteration: 
+                            val_iterator = iter(self.val_loader)
+                            blobs = next(val_iterator).data
+                        jump_flag = self._voxel_pixel_association(blobs)
                         if jump_flag: 
                             print('error in single validation batch, skipping the current batch...')
                             continue
-                        val_loss = self._eval_step(blobs_val)
+                        val_loss = self._eval_step(blobs)
                     self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
                     print('[Iteration %d/%d] VAL loss: %.3f' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, val_loss))
 
@@ -77,7 +83,8 @@ class Trainer3DReconstruction(BaseTrainer):
         val_loss = AverageMeter()
         self.model.eval()
         with torch.no_grad(): 
-            for blobs in self.val_loader:
+            for sample in self.val_loader:
+                blobs = sample.data
                 batch_size = blobs['data'].shape[0] 
                 jump_flag = self._voxel_pixel_association(blobs)
                 if jump_flag:

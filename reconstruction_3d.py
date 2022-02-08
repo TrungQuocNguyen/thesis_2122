@@ -32,8 +32,8 @@ def train(cfg):
     if cfg["NUM_IMAGES"] < num_images: 
         num_images = cfg["NUM_IMAGES"]
 
-    dataloader_train = get_dataloader(cfg, dataset_train, batch_size= cfg["BATCH_SIZE"], shuffle = True, num_workers=8)
-    dataloader_val = get_dataloader(cfg, dataset_val, batch_size= cfg["BATCH_SIZE"], shuffle= True, num_workers=8)
+    dataloader_train = get_dataloader(cfg, dataset_train, batch_size= cfg["BATCH_SIZE"], shuffle = cfg["SHUFFLE_TRAIN"], num_workers=cfg["NUM_WORKERS"], pin_memory= cfg["PIN_MEMORY"])
+    dataloader_val = get_dataloader(cfg, dataset_val, batch_size= cfg["BATCH_SIZE"], shuffle= cfg["SHUFFLE_VAL"], num_workers=cfg["NUM_WORKERS"], pin_memory= cfg["PIN_MEMORY"])
 
     intrinsic = make_intrinsic(cfg["fx"], cfg["fy"], cfg["mx"], cfg["my"])
     intrinsic = adjust_intrinsic(intrinsic, [cfg["INTRINSIC_IMAGE_WIDTH"], cfg["INTRINSIC_IMAGE_HEIGHT"]], cfg["DEPTH_SHAPE"])

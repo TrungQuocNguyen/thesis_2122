@@ -12,6 +12,10 @@
     "COLOR_MEAN": [0.496342, 0.466664, 0.440796],
     "COLOR_STD":  [0.277856, 0.28623, 0.291129], 
     "BATCH_SIZE": 16,
+    "SHUFFLE_TRAIN": true,
+    "SHUFFLE_VAL": true,
+    "NUM_WORKERS": 4, 
+    "PIN_MEMORY": false,
     "NUM_IMAGES": 5, 
     "PROJ_DEPTH_MIN": 0.1, 
     "PROJ_DEPTH_MAX": 4.0,  
@@ -25,13 +29,13 @@
     "trainer": {
         "epochs": 5000,
         "log_nth": 1,
-        "val_check_interval": 15, 
+        "val_check_interval": 62, 
         "single_sample" : false, 
         "load_path": "",
         "plot_gradient": false
     }, 
     "optimizer": {
-        "learning_rate": 3e-3, 
+        "learning_rate": 1e-3, 
         "weight_decay": 0
     }
 }
