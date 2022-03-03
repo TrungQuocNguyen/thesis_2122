@@ -33,7 +33,7 @@ class Trainer3DReconstruction(BaseTrainer):
             loss = self._train_step(blobs)
             train_loss.update(loss, batch_size)
             if self.log_nth and i % self.log_nth == self.log_nth-1: 
-                self.writer.add_scalar('train_loss', train_loss.val, global_step= len(self.train_loader)*epoch + i )
+                #self.writer.add_scalar('train_loss', train_loss.val, global_step= len(self.train_loader)*epoch + i )
                 print('[Iteration %d/%d] TRAIN loss: %.3f(%.3f)' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, train_loss.val, train_loss.avg))
                 if not self.single_sample: 
                     self.model.eval()
@@ -48,7 +48,8 @@ class Trainer3DReconstruction(BaseTrainer):
                             print('error in single validation batch, skipping the current batch...')
                             continue
                         val_loss = self._eval_step(blobs)
-                    self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
+                    #self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
+                    self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = len(self.train_loader)*epoch + i)
                     print('[Iteration %d/%d] VAL loss: %.3f' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, val_loss))
 
             if self.val_check_interval and i % self.val_check_interval ==  self.val_check_interval -1: 
@@ -66,6 +67,7 @@ class Trainer3DReconstruction(BaseTrainer):
 
         if self.log_nth and not self.single_sample: 
             print('[Epoch %d/%d] TRAIN loss: %.3f' %(epoch+1, self.epochs, train_loss.avg))
+            self.writer.add_scalars('epoch_loss', {'train_loss': train_loss.avg, 'val_loss': loss }, global_step = num_val_epoch)
         return train_loss.avg
 
 
@@ -93,7 +95,7 @@ class Trainer3DReconstruction(BaseTrainer):
                 loss= self._eval_step(blobs)
                 val_loss.update(loss, batch_size)
         if self.log_nth:  
-            self.writer.add_scalar('val_epoch_loss', val_loss.avg, global_step= epoch)
+            #self.writer.add_scalar('val_epoch_loss', val_loss.avg, global_step= epoch)
             print('[VAL epoch %d] VAL loss: %.3f' %(epoch, val_loss.avg))
         return val_loss.avg
 

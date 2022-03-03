@@ -151,12 +151,22 @@ class ScanNet2D3D(Dataset):
         else:
             raise NotImplementedError
 
-        if self.mode == 'chunk':
+        if self.mode != 'chunk':
+                num_images = os.listdir(os.path.join(self.cfg["BASE_IMAGE_PATH"], scene_name, 'depth'))
+                # reload correct world2grid for scene
+                world2grid = self.load_pose(os.path.join(self.cfg["BASE_IMAGE_PATH"], scene_name, 'world2grid.txt'))
+                # padding substraction
+                world2grid[0][3] = world2grid[0][3] - 10
+                world2grid[1][3] = world2grid[1][3] - 16
+                world2grid[2][3] = world2grid[2][3] - 10
+        else:
             num_images = range(num_images)
 
         for i in num_images:
-            if self.mode == 'chunk':
-                (frameid,) = reader.read('uint32')  
+            if self.mode != 'chunk':
+                frameid = i.split('.')[0]
+            else:
+                (frameid,) = reader.read('uint32')
 
             depth_file = os.path.join(self.cfg["BASE_IMAGE_PATH"], scene_name, 'depth', str(frameid) + '.png')
             image_file = os.path.join(self.cfg["BASE_IMAGE_PATH"], scene_name, self.cfg["IMAGE_TYPE"], str(frameid) + self.cfg["IMAGE_EXT"])
