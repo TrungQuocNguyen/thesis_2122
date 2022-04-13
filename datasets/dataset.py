@@ -9,6 +9,7 @@ from torchvision.transforms.functional import InterpolationMode
 import torchvision.transforms.functional as tf
 import random 
 from .BinaryReader import BinaryReader
+import h5py
 class ScanNet2D(Dataset): 
     def __init__(self, cfg): 
         self.cfg = cfg
@@ -68,137 +69,58 @@ class ScanNet2D(Dataset):
         target = torch.from_numpy(target)
 
         return img, target
-        
+
 class ScanNet2D3D(Dataset):
     """
     SUNCG/ScanNet DATASET
     """
-    def __init__(self, cfg, data_location, mode):
+    def __init__(self, cfg, split = 'train'):
         super(Dataset, self).__init__()
         self.cfg = cfg
-        self.mode = mode 
-
-        if os.path.isfile(data_location):
-            datalist = open(data_location, 'r')
-            self.scenes = [x.strip() for x in datalist.readlines()]
-
-
+        if cfg['augmented'] and split == 'train': 
+                filename = 'augmented_' + split + '_clean'
+        else: 
+            filename = split + '_clean'
+        self.file = h5py.File(os.path.join(cfg['root'], 'data_chunks', filename  + '.hdf5'), 'r')
     def __len__(self):
-        return len(self.scenes)
+        return len(self.file['frames'])
 
     def __getitem__(self, idx):
+        frames = self.file['frames'][idx] # 
+        data = self.file['x'][idx] # np array of [32, 32, 64]
+        label_grid = self.file['y'][idx] if self.cfg['return_label'] else None # np array of [32, 32, 64]
+        scene_id = self.file['scene_id'][idx]
+        scan_id = self.file['scan_id'][idx]
+        world2grid = self.file['world_to_grid'][idx] # np array [4,4], float 32
 
-        #---------------------------
-        # read sdf
-        #---------------------------
-        reader = BinaryReader(self.scenes[idx])
-        dimX, dimY, dimZ = reader.read('UINT64', 3) # 96, 48, 96
-        data = reader.read('float', dimX * dimY * dimZ) # tuple
-        data = np.expand_dims(np.reshape(data, (dimX, dimY, dimZ), order='F'), 0).astype(np.float32) # np float array of [1,96, 48, 96]
-
-        if self.cfg["FLIP_TSDF"]:
-            trunc_data = np.clip(data, -self.cfg["TRUNCATED"], self.cfg["TRUNCATED"])
-            trunc_abs_data = np.abs(trunc_data)
-            trunc_abs_data_flip = self.cfg["TRUNCATED"] - trunc_abs_data
-            trunc_abs_data_flip[data < 0] *= -1
-            data = trunc_abs_data_flip
-            #data = np.concatenate([trunc_abs_data_flip, np.greater(data, -1)], 0)
-        elif self.cfg["LOG_TSDF"]:
-            trunc_data = np.clip(data, -self.cfg["TRUNCATED"], self.cfg["TRUNCATED"])
-            trunc_abs_data = np.abs(trunc_data)
-            trunc_abs_data_log = np.log(trunc_abs_data)
-            trunc_abs_data_log[data < 0] *=-1
-            data = trunc_abs_data_log
-            #data = np.concatenate([trunc_abs_data_log, np.greater(data, -1)], 0)
-        else:
-            trunc_data = np.clip(data, -self.cfg["TRUNCATED"], self.cfg["TRUNCATED"])
-            mask = abs(trunc_data)< 1
-            data = np.zeros((1, dimX, dimY, dimZ)).astype(np.float32) # (1, 96, 48, 96)
-            data[mask] = 1.0
-            #data = trunc_data
-        #    trunc_abs_data = np.abs(trunc_data)
-        #    data = np.concatenate([trunc_abs_data, np.greater(data, 0)], 0) # (2,96,48,96)
-        #----------------------------
-        # read redundant data (used for segmentation task, not for reconstruction)
-        #----------------------------
-        (num_box,) = reader.read('uint32')
-        for i in range(num_box):
-            _, _, _ , _, _, _ = reader.read('float', 6)
-            _ = reader.read('uint32')
-        (num_mask,) = reader.read('uint32')
-        for i in range(num_mask):
-                _ = reader.read('uint32')
-                dimX, dimY, dimZ = reader.read('UINT64', 3) # for e.g(just one sample) (8,3,9)
-                _ = reader.read('uint16', dimX * dimY * dimZ)
-        (num_box,) = reader.read('uint32')
-        for i in range(num_box):
-                _ = reader.read('float')
-        #----------------------------
-        # read images
-        #----------------------------
-         # read image, depth image, pose, world2grid
         depths = []
         images = []
         poses = []
         frameids = []
         nearest_images = {}
-        image_files = []
-        world2grid = np.linalg.inv(np.transpose(np.reshape(reader.read('float', 16), (4, 4), order='F')).astype(np.float32)) # np array [4,4]
-        (num_images,) = reader.read('uint32') # #5 RGB images that associated with this chunk
 
-        if self.cfg["BASE_IMAGE_PATH"].endswith('square') or self.cfg["BASE_IMAGE_PATH"].endswith('square/'):
-            scene_name = os.path.basename(self.scenes[idx]).split('__')[0] # e.g scene0528_00
-        else:
-            raise NotImplementedError
+        scene_name = 'scene' + '{:04d}'.format(scene_id) + '_' + '{:02d}'.format(scan_id) # e.g scene0528_00
 
-        if self.mode != 'chunk':
-                num_images = os.listdir(os.path.join(self.cfg["BASE_IMAGE_PATH"], scene_name, 'depth'))
-                # reload correct world2grid for scene
-                world2grid = self.load_pose(os.path.join(self.cfg["BASE_IMAGE_PATH"], scene_name, 'world2grid.txt'))
-                # padding substraction
-                world2grid[0][3] = world2grid[0][3] - 10
-                world2grid[1][3] = world2grid[1][3] - 16
-                world2grid[2][3] = world2grid[2][3] - 10
-        else:
-            num_images = range(num_images)
+        for frameid in frames: 
+            if frameid >=0: 
+                depth_file = os.path.join(self.cfg['root'], scene_name, 'depth', str(frameid) + '.png')
+                image_file = os.path.join(self.cfg['root'], scene_name, 'color', str(frameid) + '.jpg')
+                pose_file = os.path.join(self.cfg['root'], scene_name, 'pose', str(frameid) + '.txt')
+                poses.append(self.load_pose(pose_file)) 
+                depths.append(self.load_depth(depth_file, self.cfg["depth_shape"]))
+                im_pre = self.load_image(image_file, self.cfg["image_shape"])
+                images.append(im_pre)
+                frameids.append(frameid)
 
-        for i in num_images:
-            if self.mode != 'chunk':
-                frameid = i.split('.')[0]
-            else:
-                (frameid,) = reader.read('uint32')
-
-            depth_file = os.path.join(self.cfg["BASE_IMAGE_PATH"], scene_name, 'depth', str(frameid) + '.png')
-            image_file = os.path.join(self.cfg["BASE_IMAGE_PATH"], scene_name, self.cfg["IMAGE_TYPE"], str(frameid) + self.cfg["IMAGE_EXT"])
-            pose_file = os.path.join(self.cfg["BASE_IMAGE_PATH"], scene_name, 'pose', str(frameid) + '.txt')
-            poses.append(self.load_pose(pose_file)) # list of  5 np array [4,4], each array: camera to world pose
-            depths.append(self.load_depth(depth_file, self.cfg["DEPTH_SHAPE"])) # list of 5 np array [256, 328]
-            im_pre = self.load_image(image_file, self.cfg["IMAGE_SHAPE"]) # torch tensor size [3, 256, 328]
-
-            images.append(im_pre) # list of 5 torch tensor size [3, 256, 328], value approximately in [-1.7,1.8]
-            frameids.append(frameid) # list of 5 image id(id inside that specific scene e.g scene0528_00) corresponds to this chunk
-            image_files.append(image_file) # list of 5 paths to images
             
         nearest_images = {'depths': depths, 'images': images, 'poses': poses, 'world2grid': world2grid, 'frameids': frameids}
-
-        #---------------------------
-        # crop max height
-        #---------------------------
-        if self.mode == 'benchmark':
-            maxHeight = 480
-        else:
-            maxHeight = 48
-
-        data = data[:,:,:maxHeight,:]
-
         # dict return
         dict_return = {
-            'id': self.scenes[idx], # string: path to .chunk file of this chunk 
-            'data': data,  # np float array [2,96, 48, 96]
-            'nearest_images': nearest_images, # dict of {'depths': # list of 5 np array [32, 41], 'images':  # list of 5 torch tensor size [3, 256, 328], value approximately in [-1.7,1.8], 'poses':# list of  5 np array [4,4], 'world2grid': np array 4x4, 'frameids':  list of 5 image id}
-            'image_files': image_files # list of 5 paths to images
+            'data': data,  # np float array [32, 32, 64]
+            'label': label_grid, # np float array of [32, 32, 64]
+            'nearest_images': nearest_images, # dict of {'depths': # list of 5 np array [256, 328], 'images':  # list of 5 torch tensor size [3, 256, 328], value approximately in [-1.7,1.8], 'poses':# list of  5 np array [4,4], 'world2grid': np array 4x4, 'frameids':  list of 5 image id}
+            'scan_name': scene_name
         }
-        reader.close()
 
         return dict_return
 
@@ -236,10 +158,9 @@ class ScanNet2D3D(Dataset):
         image = self.resize_crop_image(image, image_dims) # (256, 328,3)
         if len(image.shape) == 3: # color image
             image =  np.transpose(image, [2, 0, 1])  # move feature to front
-            image = transforms.Normalize(mean=self.cfg["COLOR_MEAN"], std=self.cfg["COLOR_STD"])(torch.Tensor(image.astype(np.float32) / 255.0))
+            image = transforms.Normalize(mean=self.cfg["color_mean"], std=self.cfg["color_std"])(torch.Tensor(image.astype(np.float32) / 255.0))
         elif len(image.shape) == 2: # label image
             image = np.expand_dims(image, 0)
         else:
             raise
         return image
-

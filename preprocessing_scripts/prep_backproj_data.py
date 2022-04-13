@@ -3,7 +3,8 @@ prepare 2d+3d dataset (like 3DMV)
 3d: subvolumes x and y sampled from dense grid
 2d: indices of 5 nearest images to each subvolume
 '''
-
+import sys
+sys.path.append('.')
 import os, os.path as osp
 import argparse
 from pathlib import Path
@@ -17,7 +18,6 @@ import h5py
 import numpy as np
 import yaml
 
-from lib.misc import read_config
 from datasets.scannet.sem_seg_3d import ScanNetGridTestSubvols, ScanNetSemSegOccGrid
 from datasets.scannet.utils_3d import ProjectionHelper, adjust_intrinsic, \
     load_depth_multiple, load_intrinsic, load_pose_multiple, make_intrinsic
@@ -97,7 +97,7 @@ def get_nearest_images(world_to_grid, poses, depths, num_nearest_imgs, projector
 
     for pose, depth in zip(poses, depths):
         projection = projector.compute_projection(depth, pose, world_to_grid)
-        projections.append(projection)
+        projections.append(projection)  # list of tuple (proj_3d, proj_2d). Total elements = number of camera pose in that scene
 
     # initially none of the voxels are covered
     covered_voxels = set()
@@ -151,7 +151,7 @@ def main(args):
     # create dir if it doesn't exist
     out_path = Path(args.out_path)
     out_path.parent.mkdir(exist_ok=True)
-
+    
     # subvol dims W, H, D
     subvol_size = tuple(cfg['data']['subvol_size'])
 
@@ -168,18 +168,19 @@ def main(args):
         n_samples = len(dataset) * subvols_per_scene
 
     print(f'Total subvols in output file: {n_samples}')
-
+    
+    
     # images per subvol 
     num_nearest_imgs = cfg['data']['num_nearest_images']
     # W, H size of the image that looks at the subvol
     img_size = cfg['data']['img_size']
-
+    
     outfile = h5py.File(out_path, 'w')
     # create the datasets in the h5 file
     create_datasets(outfile, n_samples, subvol_size, num_nearest_imgs)
 
     data_ndx = 0
-
+    
     # intrinsic of the color camera from scene0001_00
     # start with this intrinsic which can work for all scenes (approx)
     # later adjust the instrinsic if needed
@@ -191,7 +192,7 @@ def main(args):
                                 img_size,
                                 subvol_size,
                                 cfg['data']['voxel_size']).to(device)
-
+    
     # number of subvols to compute projection in parallel
     if args.full_scene:
         batch_size = N_PROC * CHUNK_SIZE
@@ -223,13 +224,9 @@ def main(args):
         scan_dir = root / scan_name
         pose_dir = scan_dir / 'pose'
         depth_dir = scan_dir / 'depth'
-        intrinsic_path = root / scan_name / 'intrinsic/intrinsic_color.txt'
-
-        # set the intrinsic -> once per scene
-        intrinsic = load_intrinsic(intrinsic_path)
-        intrinsic = adjust_intrinsic(intrinsic, [1296, 968], img_size)
         projector.update_intrinsic(intrinsic)
 
+        
         # list all the camera poses
         all_pose_files = sorted(os.listdir(pose_dir), key=lambda f: int(osp.splitext(f)[0]))
         # indices into all_pose_files of poses considered
@@ -324,7 +321,7 @@ def main(args):
             # full scene - save all to file, -1 as nearest image
             for ndx, nearest_imgs in enumerate(nearest_imgs_all):
                 # not full scene, and didnt get coverage -> discard
-                if (-1 in nearest_imgs) and (not args.full_scene):
+                if (-1 in nearest_imgs) and (not args.full_scene): # even a subvolume with 1 image is also accepted 
                     bad_subvols += 1
                 else:
                     # update the number found
@@ -355,14 +352,15 @@ def main(args):
                     # have enough, dont write here onwards to file
                     if subvols_found == subvols_per_scene:
                         break
-            
+
             pbar.update(good_in_batch)
         pbar.close()
 
     print('Good subvols:', data_ndx)
     print('Bad subvols:', bad_subvols)
-    
+
     outfile.close()
+
 
 if __name__ == '__main__':
     from torch.multiprocessing import set_start_method
@@ -379,5 +377,8 @@ if __name__ == '__main__':
     p.add_argument('--full-scene', action='store_true', default=False,
                     dest='full_scene', help='Sliding window of subvols over the whole scene')
     args = p.parse_args()
-
+    print(args)
     main(args)
+    # cfg_path: 
+    # gpu: true
+    #split: train/val

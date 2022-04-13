@@ -1,14 +1,14 @@
 {
     "root": "/mnt/raid/tnguyen/scannet_2d3d",
-    "return_label": false,
+    "return_label": true,
     "augmented": true,
     "depth_shape": [328, 256],
     "image_shape": [328, 256],
     "color_mean": [0.496342, 0.466664, 0.440796],
     "color_std":  [0.277856, 0.28623, 0.291129],
-    "batch_size": 64,
-    "shuffle_train": true,
-    "shuffle_val": true,
+    "batch_size": 4,
+    "shuffle_train": false,
+    "shuffle_val": false,
     "num_workers": 4,
     "pin_memory": false,
     "num_images": 5,
@@ -23,15 +23,15 @@
     "mx": 647.75,
     "my": 483.75,
     "trainer": {
-        "epochs": 20,
+        "epochs": 10,
         "log_nth": 1,
-        "val_check_interval": 1876,
+        "val_check_interval": 625,
         "single_sample" : false,
         "load_path": "",
         "plot_gradient": false
     },
     "optimizer": {
-        "learning_rate": 1e-3,
+        "learning_rate": 1e-4,
         "weight_decay": 0
     }
 }

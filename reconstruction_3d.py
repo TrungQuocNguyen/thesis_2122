@@ -10,6 +10,7 @@ from models import Dense3DNetwork, SurfaceNet
 from datasets import ScanNet2D3D, get_dataloader
 from trainer import Trainer3DReconstruction
 from utils.helpers import print_params, make_intrinsic, adjust_intrinsic, init_weights
+from projection import ProjectionHelper
 
 seed_value= 1234
 # 1. Set `PYTHONHASHSEED` environment variable at a fixed value
@@ -26,33 +27,34 @@ def train(cfg):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")   
     print(device)
 
-    dataset_train = ScanNet2D3D(cfg, cfg["TRAIN_FILELIST"], mode='chunk')
-    dataset_val = ScanNet2D3D(cfg, cfg["VAL_FILELIST"], mode='chunk')
+    dataset_train = ScanNet2D3D(cfg, split = 'train')
+    dataset_val = ScanNet2D3D(cfg, split = 'val')
     num_images = len(dataset_train[0]["nearest_images"]["depths"]) # number of surrounding images of a chunk 
-    if cfg["NUM_IMAGES"] < num_images: 
-        num_images = cfg["NUM_IMAGES"]
+    if cfg["num_images"] < num_images: 
+        num_images = cfg["num_images"]
 
-    dataloader_train = get_dataloader(cfg, dataset_train, batch_size= cfg["BATCH_SIZE"], shuffle = cfg["SHUFFLE_TRAIN"], num_workers=cfg["NUM_WORKERS"], pin_memory= cfg["PIN_MEMORY"])
-    dataloader_val = get_dataloader(cfg, dataset_val, batch_size= cfg["BATCH_SIZE"], shuffle= cfg["SHUFFLE_VAL"], num_workers=cfg["NUM_WORKERS"], pin_memory= cfg["PIN_MEMORY"])
+    dataloader_train = get_dataloader(cfg, dataset_train, batch_size= cfg["batch_size"], shuffle = cfg["shuffle_train"], num_workers=cfg["num_workers"], pin_memory= cfg["pin_memory"])
+    dataloader_val = get_dataloader(cfg, dataset_val, batch_size= cfg["batch_size"], shuffle= cfg["shuffle_val"], num_workers=cfg["num_workers"], pin_memory= cfg["pin_memory"])
 
     intrinsic = make_intrinsic(cfg["fx"], cfg["fy"], cfg["mx"], cfg["my"])
-    intrinsic = adjust_intrinsic(intrinsic, [cfg["INTRINSIC_IMAGE_WIDTH"], cfg["INTRINSIC_IMAGE_HEIGHT"]], cfg["DEPTH_SHAPE"])
+    intrinsic = adjust_intrinsic(intrinsic, [cfg["intrinsic_image_width"], cfg["intrinsic_image_height"]], cfg["depth_shape"])
 
+    projector = ProjectionHelper(intrinsic, cfg["proj_depth_min"], cfg["proj_depth_max"], cfg["depth_shape"], cfg["subvol_size"], cfg["voxel_size"], device)
 
     model  = Dense3DNetwork(cfg, num_images)
     #model.apply(init_weights)
     print_params(model)
     model.to(device)
 
-    loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([44.5], device = 'cuda'))
-    #loss = nn.L1Loss()
+    #loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([44.5], device = 'cuda'))
+    loss = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100)
 
     optimizer = optim.Adam(model.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
     #optimizer = optim.SGD(model.parameters(), lr  = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"], momentum = 0, nesterov= False)
     
     
 
-    trainer = Trainer3DReconstruction(cfg, model, loss, dataloader_train, dataloader_val, intrinsic, optimizer, device)
+    trainer = Trainer3DReconstruction(cfg, model, loss, dataloader_train, dataloader_val, projector, optimizer, device)
     trainer.train()
     
 def test(cfg): 
@@ -65,7 +67,7 @@ if __name__ =='__main__':
     args = parser.parse_args()
     cfg = json.load(open(args.config))
     if args.mode == 'train': 
-        cfg["MODE"] = 'train'
+        cfg["mode"] = 'train'
         train(cfg)
     
     

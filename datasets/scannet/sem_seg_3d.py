@@ -14,7 +14,7 @@ import torch
 from torch.utils.data import Dataset
 
 from datasets.scannet.common import nyu40_to_continuous, read_label_mapping, read_list, get_scene_scan_ids
-from transforms.grid_3d import pad_volume
+from utils.grid_3d import pad_volume
 
 def collate_func(sample_list):
     return {
@@ -163,7 +163,6 @@ class ScanNetSemSegOccGrid(Dataset):
         '''
         self.root_dir = Path(cfg['root'])
         
-        self.use_rgb = cfg.get('use_rgb', False)
 
         self.transform = transform
         self.full_scene = full_scene

@@ -2,6 +2,8 @@
 Input: ScanNet gt and label PLY files
 Output: GT Binary occupancy voxel grid and label grid
 '''
+import sys
+sys.path.append('.')
 import argparse
 import torch
 
@@ -14,7 +16,7 @@ import os, os.path as osp
 from pathlib import Path
 
 import trimesh
-from datasets import get_dataloader
+from datasets.scannet.common import load_ply
 
 def get_label_grid(input_grid, gt_vertices, gt_vtx_labels, rgb, voxel_size=None, method='nearest'):
     '''
@@ -64,7 +66,6 @@ def main(args):
     voxel_size = args.voxel_size
     print(f'Using voxel size: {voxel_size}')
     print(f'Read labels?: {not args.no_label}')
-
     for scan_id in tqdm(sorted(os.listdir(root)), desc='scan'):
         scan_dir = root / scan_id
 
@@ -92,7 +93,9 @@ def main(args):
 
         data = {'x': x, 'y': y, 'translation': input_grid.translation, 
                 'start_ndx': input_grid.translation / voxel_size}
-        torch.save(data, output/ scan_id / out_file)
+        save_path = output / scan_id
+        save_path.mkdir(parents = True, exist_ok = True)
+        torch.save(data, save_path / out_file)
 
 if __name__ == '__main__':
     # params
