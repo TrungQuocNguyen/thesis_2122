@@ -3,11 +3,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 from utils.helpers import plot_preds
-from projection import ProjectionHelper
 class Trainer3DReconstruction(BaseTrainer): 
-    def __init__(self, cfg, model, loss, train_loader, val_loader, intrinsic, optimizer, device): 
+    def __init__(self, cfg, model, loss, train_loader, val_loader, projector, optimizer, device): 
         super(Trainer3DReconstruction, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
-        self.intrinsic = intrinsic
+        self.projector = projector
         self.best_loss = np.inf
         if cfg["trainer"]["load_path"]:
             self.best_loss = self.checkpoint["best_loss"]
@@ -24,7 +23,7 @@ class Trainer3DReconstruction(BaseTrainer):
         for i, batch in enumerate(self.train_loader, 0):
             blobs = batch.data
             self.model.train()
-            #blobs['data']: [N, 1, 96, 48, 96] (we only represent TSDF as 1 channel) N: batch_size
+            #blobs['data']: [N, 32, 32, 64] N: batch_size
             batch_size = blobs['data'].shape[0]
             jump_flag = self._voxel_pixel_association(blobs)
             if jump_flag:
@@ -33,7 +32,8 @@ class Trainer3DReconstruction(BaseTrainer):
             loss = self._train_step(blobs)
             train_loss.update(loss, batch_size)
             if self.log_nth and i % self.log_nth == self.log_nth-1: 
-                #self.writer.add_scalar('train_loss', train_loss.val, global_step= len(self.train_loader)*epoch + i )
+                if self.single_sample: 
+                    self.writer.add_scalar('train_loss', train_loss.val, global_step= len(self.train_loader)*epoch + i )
                 print('[Iteration %d/%d] TRAIN loss: %.3f(%.3f)' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, train_loss.val, train_loss.avg))
                 if not self.single_sample: 
                     self.model.eval()
@@ -55,7 +55,7 @@ class Trainer3DReconstruction(BaseTrainer):
             if self.val_check_interval and i % self.val_check_interval ==  self.val_check_interval -1: 
                 if not self.single_sample: 
                     num_val_epoch = epoch*(len(self.train_loader)// self.val_check_interval) + i//self.val_check_interval +1
-                    loss = self._val_epoch(num_val_epoch)
+                    loss = self._val_epoch(num_val_epoch)  #comment this when overfitting with 10 train and 4 val
                 is_best = loss < self.best_loss
                 self.best_loss = min(loss, self.best_loss)
                 self.save_checkpoint({
@@ -64,16 +64,17 @@ class Trainer3DReconstruction(BaseTrainer):
                     'best_loss': self.best_loss, 
                     'optimizer': self.optimizer.state_dict(),
                 }, is_best)
-
+                val_epoch_loss = loss 
+        # comment this block when overfitting with 10 train and 4 val    
         if self.log_nth and not self.single_sample: 
             print('[Epoch %d/%d] TRAIN loss: %.3f' %(epoch+1, self.epochs, train_loss.avg))
-            self.writer.add_scalars('epoch_loss', {'train_loss': train_loss.avg, 'val_loss': loss }, global_step = num_val_epoch)
+            self.writer.add_scalars('epoch_loss', {'train_loss': train_loss.avg, 'val_loss': val_epoch_loss }, global_step = epoch)
         return train_loss.avg
 
 
     def _train_step(self, blobs): 
-        targets = blobs['data'].to(self.device) # [N, 1, 96, 48, 96] 
-        preds = self.model(blobs, self.device) #[N, 1, 96, 48, 96]
+        targets = blobs['data'].long().to(self.device) # [N, 32, 32, 64] 
+        preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
         loss = self.loss_func(preds, targets)
         self.optimizer.zero_grad()
         loss.backward()
@@ -95,20 +96,18 @@ class Trainer3DReconstruction(BaseTrainer):
                 loss= self._eval_step(blobs)
                 val_loss.update(loss, batch_size)
         if self.log_nth:  
-            #self.writer.add_scalar('val_epoch_loss', val_loss.avg, global_step= epoch)
+            self.writer.add_scalar('val_epoch_loss', val_loss.avg, global_step= epoch)
             print('[VAL epoch %d] VAL loss: %.3f' %(epoch, val_loss.avg))
         return val_loss.avg
 
     def _eval_step(self, blobs): 
-        targets = blobs['data'].to(self.device) # [N, 1, 96, 48, 96] 
-        preds = self.model(blobs, self.device) #[N, 1, 96, 48, 96]
+        targets = blobs['data'].long().to(self.device) # [N, 32, 32, 64]
+        preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
         loss = self.loss_func(preds, targets)
         return loss.item()
     def _voxel_pixel_association(self, blobs): 
         batch_size = blobs['data'].shape[0]
-        grid_shape = blobs['data'].shape[-3:] # [96,48,96]
-        projection_helper = ProjectionHelper(self.intrinsic, self.cfg["PROJ_DEPTH_MIN"], self.cfg["PROJ_DEPTH_MAX"], self.cfg["DEPTH_SHAPE"], grid_shape, self.cfg["VOXEL_SIZE"], self.device)
-        proj_mapping = [[projection_helper.compute_projection(d.to(self.device), c.to(self.device), t.to(self.device)) for d, c, t in zip(blobs['nearest_images']['depths'][i], blobs['nearest_images']['poses'][i], blobs['nearest_images']['world2grid'][i])] for i in range(batch_size)]
+        proj_mapping = [[self.projector.compute_projection(d.to(self.device), c.to(self.device), t.to(self.device)) for d, c, t in zip(blobs['nearest_images']['depths'][i], blobs['nearest_images']['poses'][i], blobs['nearest_images']['world2grid'][i])] for i in range(batch_size)]
         blobs['proj_ind_3d'] = []
         blobs['proj_ind_2d'] = []
         jump_flag = False
@@ -119,8 +118,8 @@ class Trainer3DReconstruction(BaseTrainer):
         if  not jump_flag: 
             for i in range(batch_size):
                 proj_mapping0, proj_mapping1 = zip(*proj_mapping[i])
-                blobs['proj_ind_3d'].append(torch.stack(proj_mapping0)) # list of [max_num_images,96*48*96 + 1], total batch_size elements in the list 
-                blobs['proj_ind_2d'].append(torch.stack(proj_mapping1)) # list of [max_num_images,96*48*96 + 1], total batch_size elements in the list      
+                blobs['proj_ind_3d'].append(torch.stack(proj_mapping0)) # list of [max_num_images, 32*32*64+ 1], total batch_size elements in the list 
+                blobs['proj_ind_2d'].append(torch.stack(proj_mapping1)) # list of [max_num_images, 32*32*64 + 1], total batch_size elements in the list      
         return jump_flag
 
 

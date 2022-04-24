@@ -9,15 +9,18 @@ class DataCollator(object):
         :param batch: list of dicts
         :return: dict
         """
+        self.cfg = cfg
         nearest_images = {}
         depths = []
         poses = []
         world2grid = []
+        frameids = []
+        scan_name = []
         for b in batch:
             x = b['nearest_images']
             num_images = len(x['depths']) # 5
-            max_num_images = cfg["NUM_IMAGES"]
-            if max_num_images < num_images and cfg["MODE"] == 'train':
+            max_num_images = cfg["num_images"]
+            if max_num_images < num_images and cfg["mode"] == 'train':
                 num_images = max_num_images
                 x['images'] = x['images'][:num_images]
                 x['depths'] = x['depths'][:num_images]
@@ -25,19 +28,22 @@ class DataCollator(object):
             depths.append(torch.from_numpy(np.array(x['depths']))) # list of torch tensor size [max_num_images, 256, 328]
             poses.append(torch.from_numpy(np.array(x['poses']))) #list of torch tensor size [max_num_images, 4,4]
             world2grid.append(torch.from_numpy(x['world2grid']).expand(num_images, 4, 4)) #list of torch tensor size [max_num_images, 4,4](expanded from 1 to max_num_images)
+            frameids.append(x['frameids'])
+            scan_name.append(b['scan_name'])
 
         nearest_images = {
             'images': [torch.from_numpy(np.stack(x['nearest_images']['images'], 0).astype(np.float32)) for x in batch], # list of tensor, each tensor size [max_num_images, 3, 256, 328]
-            'depths': depths, 'poses': poses, 'world2grid': world2grid
+            'depths': depths, 'poses': poses, 'world2grid': world2grid, 'frameids': frameids
         }
         self.data = {
-            'id': [x['id'] for x in batch], # list of strings, each string is path to one .chunk file
-            'data': torch.stack([torch.from_numpy(x['data']) for x in batch], 0), # tensor [batch_size, 2,96,48,96]
+            'data': torch.stack([torch.from_numpy(x['data']) for x in batch], 0), # tensor [batch_size,32,32,64]
+            'label': torch.stack([torch.from_numpy(x['label']) for x in batch], 0) if cfg['return_label'] else None, # tensor [batch_size,32,32,64]
             'nearest_images': nearest_images,
-            'image_files': batch[0]['image_files']
+            'scan_name': scan_name
         }
     def pin_memory(self):
         self.data['data']  = self.data['data'].pin_memory()
+        self.data['label']  = self.data['label'].pin_memory() if self.cfg['return_label'] else None
         self.data['nearest_images']['images'] = [x.pin_memory() for x in self.data['nearest_images']['images']]
         self.data['nearest_images']['depths'] = [x.pin_memory() for x in self.data['nearest_images']['depths']]
         self.data['nearest_images']['poses'] = [x.pin_memory() for x in self.data['nearest_images']['poses']]
