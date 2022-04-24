@@ -12,9 +12,9 @@ class Bottleneck(nn.Module):
         self.conv2 = nn.Conv3d(planes, planes, kernel_size=3, stride=1, padding=1)
         self.conv3 = nn.Conv3d(planes, inplanes, kernel_size=1)
 
-        #self.bn1 = nn.BatchNorm3d(planes)
-        #self.bn2 = nn.BatchNorm3d(planes)
-        #self.bn3 = nn.BatchNorm3d(inplanes)
+        self.bn1 = nn.BatchNorm3d(planes)
+        self.bn2 = nn.BatchNorm3d(planes)
+        self.bn3 = nn.BatchNorm3d(inplanes)
 
         self.relu = nn.ReLU(inplace=True)
         self.stride = stride
@@ -23,17 +23,17 @@ class Bottleneck(nn.Module):
         residual = x
 
         out = self.conv1(x)
-        #out = self.bn1(out)
+        out = self.bn1(out)
         out = self.relu(out)
 
         out = self.conv2(out)
-        #out = self.bn2(out)
+        out = self.bn2(out)
         out = self.relu(out)
 
         out = self.conv3(out)
 
         out += residual
-        #out = self.bn3(out)
+        out = self.bn3(out)
         out = self.relu(out)
         return out
 
@@ -44,32 +44,32 @@ class Dense3DNetwork(nn.Module):
                 self.cfg = cfg
                 self.encoder  = nn.Sequential(
                         nn.Conv3d(num_images*3, 64, kernel_size=(2, 2, 2), stride=(2, 2, 2), padding=(0, 0, 0)), # [N, 64, 16, 16, 32]
-                        #nn.BatchNorm3d(64),
+                        nn.BatchNorm3d(64),
                         nn.ReLU(True),
                         Bottleneck(64, 32, stride=1), # [N, 64, 16, 16, 32]
                         nn.MaxPool3d(3, 1, 1), # [N, 64, 16, 16, 32]
                         nn.Conv3d(64, 128, kernel_size=(2, 2, 2), stride=(2, 2, 2), padding=(0, 0, 0)), # [N, 128, 8, 8, 16]
-                        #nn.BatchNorm3d(128),
+                        nn.BatchNorm3d(128),
                         nn.ReLU(True),
                         Bottleneck(128, 32, stride=1), # [N, 128, 8, 8, 16]
                         nn.MaxPool3d(3, 1, 1), # [N, 128, 8, 8, 16],
                         nn.Conv3d(128, 128, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)), # [N, 128, 8, 8, 16]
-                        #nn.BatchNorm3d(128),
+                        nn.BatchNorm3d(128),
                         nn.ReLU(True),
                         Bottleneck(128, 64, stride=1), # [N, 128, 8, 8, 16]
                         Bottleneck(128, 64, stride=1), # [N, 128, 8, 8, 16]
                         nn.MaxPool3d(3, 1, 1))  # [N, 128, 8, 8, 16]
                 self.decoder = nn.Sequential(
                         nn.ConvTranspose3d(128, 128, kernel_size= (3,3,3), stride= (1,1,1), padding= (1,1,1)),  # [N, 128, 8, 8, 16]
-                        #nn.BatchNorm3d(128),
+                        nn.BatchNorm3d(128),
                         nn.ReLU(True), 
                         Bottleneck(128, 64, stride = 1),
                         nn.ConvTranspose3d(128, 64, kernel_size= (2,2,2), stride= (2,2,2), padding = (0,0,0)),  # [N, 64, 16, 16, 32]
-                        #nn.BatchNorm3d(64),
+                        nn.BatchNorm3d(64),
                         nn.ReLU(True),  
                         Bottleneck(64, 32, stride = 1),
                         nn.ConvTranspose3d(64, 32, kernel_size= (2,2,2), stride= (2,2,2), padding = (0,0,0)),  #  [N, 32, 32, 32, 64]
-                        #nn.BatchNorm3d(32),
+                        nn.BatchNorm3d(32),
                         nn.ReLU(True), 
                         Bottleneck(32, 16, stride = 1), # [N, 32, 32, 32, 64]
                         nn.Conv3d(32, 2, kernel_size= (3,3,3), stride= (1,1,1), padding= (1,1,1))) # [N, 2, 32, 32, 64]
