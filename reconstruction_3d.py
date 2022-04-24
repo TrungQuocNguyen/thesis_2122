@@ -10,7 +10,8 @@ from models import Dense3DNetwork, SurfaceNet
 from datasets import ScanNet2D3D, get_dataloader
 from trainer import Trainer3DReconstruction
 from utils.helpers import print_params, make_intrinsic, adjust_intrinsic, init_weights
-from projection import ProjectionHelper
+#from projection import ProjectionHelper
+from datasets.scannet.utils_3d import ProjectionHelper
 
 seed_value= 1234
 # 1. Set `PYTHONHASHSEED` environment variable at a fixed value
@@ -27,8 +28,8 @@ def train(cfg):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")   
     print(device)
 
-    dataset_train = ScanNet2D3D(cfg, split = 'train')
-    dataset_val = ScanNet2D3D(cfg, split = 'val')
+    dataset_train = ScanNet2D3D(cfg, split = 'train', overfit = cfg["overfit"])
+    dataset_val = ScanNet2D3D(cfg, split = 'val', overfit = cfg["overfit"])
     num_images = len(dataset_train[0]["nearest_images"]["depths"]) # number of surrounding images of a chunk 
     if cfg["num_images"] < num_images: 
         num_images = cfg["num_images"]
@@ -39,9 +40,11 @@ def train(cfg):
     intrinsic = make_intrinsic(cfg["fx"], cfg["fy"], cfg["mx"], cfg["my"])
     intrinsic = adjust_intrinsic(intrinsic, [cfg["intrinsic_image_width"], cfg["intrinsic_image_height"]], cfg["depth_shape"])
 
-    projector = ProjectionHelper(intrinsic, cfg["proj_depth_min"], cfg["proj_depth_max"], cfg["depth_shape"], cfg["subvol_size"], cfg["voxel_size"], device)
-
-    model  = Dense3DNetwork(cfg, num_images)
+    projector = ProjectionHelper(intrinsic, cfg["proj_depth_min"], cfg["proj_depth_max"], cfg["depth_shape"], cfg["subvol_size"], cfg["voxel_size"]).to(device)
+    projector.update_intrinsic(intrinsic)
+    
+    model  = SurfaceNet(cfg, num_images)
+    #model  = Dense3DNetwork(cfg, num_images)
     #model.apply(init_weights)
     print_params(model)
     model.to(device)

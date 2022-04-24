@@ -72,15 +72,18 @@ class ScanNet2D(Dataset):
 
 class ScanNet2D3D(Dataset):
     """
-    SUNCG/ScanNet DATASET
+    overfit takes 3 options: "1", "10" or None 
     """
-    def __init__(self, cfg, split = 'train'):
+    def __init__(self, cfg, split, overfit = None):
         super(Dataset, self).__init__()
         self.cfg = cfg
-        if cfg['augmented'] and split == 'train': 
-                filename = 'augmented_' + split + '_clean'
+        if overfit != None:
+            filename = split + '_overfit_' + overfit + '_chunks'
         else: 
-            filename = split + '_clean'
+            if cfg['augmented'] and split == 'train': 
+                filename = 'augmented_' + split + '_clean'
+            else: 
+                filename = split + '_clean'
         self.file = h5py.File(os.path.join(cfg['root'], 'data_chunks', filename  + '.hdf5'), 'r')
     def __len__(self):
         return len(self.file['frames'])
