@@ -5,24 +5,37 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
+from torch import Tensor
+from torch.nn import CrossEntropyLoss
 import torch.optim as optim
-from models import Dense3DNetwork, SurfaceNet
+from models import Dense3DNetwork, SurfaceNet, ResUNet
 from datasets import ScanNet2D3D, get_dataloader
 from trainer import Trainer3DReconstruction
 from utils.helpers import print_params, make_intrinsic, adjust_intrinsic, init_weights
 #from projection import ProjectionHelper
 from datasets.scannet.utils_3d import ProjectionHelper
 
-seed_value= 1234
+#seed_value= 1234
 # 1. Set `PYTHONHASHSEED` environment variable at a fixed value
-os.environ['PYTHONHASHSEED']=str(seed_value)
+#os.environ['PYTHONHASHSEED']=str(seed_value)
 # 2. Set `python` built-in pseudo-random generator at a fixed value
-random.seed(seed_value)
+#random.seed(seed_value)
 # 3. Set `numpy` pseudo-random generator at a fixed value
-np.random.seed(seed_value)
+#np.random.seed(seed_value)
 # 4. Set `pytorch` pseudo-random generator at a fixed value
-torch.manual_seed(seed_value)
+#torch.manual_seed(seed_value)
 
+class FixedCrossEntropyLoss(CrossEntropyLoss):
+    """
+    Standard CrossEntropyLoss with label_smoothing doesn't handle ignore_index properly, so we apply
+    the mask ourselves. See https://github.com/pytorch/pytorch/issues/73205
+    """
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+        if not target.is_floating_point() and self.ignore_index is not None:
+            input = input.permute(0,2,3,4,1)[target!=self.ignore_index]
+            target = target[target != self.ignore_index]
+        loss = super().forward(input, target)
+        return loss
 def train(cfg): 
     print('Training network for 3D reconstruction...')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")   
@@ -43,7 +56,8 @@ def train(cfg):
     projector = ProjectionHelper(intrinsic, cfg["proj_depth_min"], cfg["proj_depth_max"], cfg["depth_shape"], cfg["subvol_size"], cfg["voxel_size"]).to(device)
     projector.update_intrinsic(intrinsic)
     
-    model  = SurfaceNet(cfg, num_images)
+    model  = ResUNet(cfg, num_images)
+    #model  = SurfaceNet(cfg, num_images)
     #model  = Dense3DNetwork(cfg, num_images)
     #model.apply(init_weights)
     print_params(model)
@@ -51,8 +65,9 @@ def train(cfg):
 
     #loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([44.5], device = 'cuda'))
     loss = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100)
+    #loss = FixedCrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100, label_smoothing= 0.1)
 
-    optimizer = optim.Adam(model.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
+    optimizer = optim.AdamW(model.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
     #optimizer = optim.SGD(model.parameters(), lr  = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"], momentum = 0, nesterov= False)
     
     

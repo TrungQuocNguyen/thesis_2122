@@ -1,2 +1,2 @@
 from .enet import ENet
-from .network_3d import Dense3DNetwork, SurfaceNet
+from .network_3d import Dense3DNetwork, SurfaceNet, ResUNet
