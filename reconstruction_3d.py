@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import CrossEntropyLoss
 import torch.optim as optim
-from models import Dense3DNetwork, SurfaceNet, ResUNet, ResNeXtUNet
+from models import Dense3DNetwork, SurfaceNet, ResUNet, ResNeXtUNet, ConvNeXtUNet
 from datasets import ScanNet2D3D, get_dataloader
 from trainer import Trainer3DReconstruction
 from utils.helpers import print_params, make_intrinsic, adjust_intrinsic, init_weights
@@ -56,7 +56,8 @@ def train(cfg):
     projector = ProjectionHelper(intrinsic, cfg["proj_depth_min"], cfg["proj_depth_max"], cfg["depth_shape"], cfg["subvol_size"], cfg["voxel_size"]).to(device)
     projector.update_intrinsic(intrinsic)
     
-    model  = ResNeXtUNet(cfg, num_images)
+    model = ConvNeXtUNet(cfg, num_images)
+    #model  = ResNeXtUNet(cfg, num_images)
     #model  = SurfaceNet(cfg, num_images)
     #model  = Dense3DNetwork(cfg, num_images)
     #model.apply(init_weights)
