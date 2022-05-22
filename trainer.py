@@ -11,6 +11,7 @@ class Trainer3DReconstruction(BaseTrainer):
         if cfg["trainer"]["load_path"]:
             self.best_loss = self.checkpoint["best_loss"]
     def train(self): 
+        self.optimizer.zero_grad()
         for epoch in range(self.start_epoch, self.epochs):
             loss = self._train_epoch(epoch)
             #if epoch % 10 == 9: 
@@ -29,9 +30,9 @@ class Trainer3DReconstruction(BaseTrainer):
             if jump_flag:
                 print('error in train batch, skipping the current batch...') 
                 continue
-            loss = self._train_step(blobs)
+            loss = self._train_step(blobs, i)*self.cfg["trainer"]["accumulation_step"]
             train_loss.update(loss, batch_size)
-            if self.log_nth and i % self.log_nth == self.log_nth-1: 
+            if self.log_nth and (i+1) % (self.log_nth * self.cfg["trainer"]["accumulation_step"])== 0 : 
                 if self.single_sample: 
                     self.writer.add_scalar('train_loss', train_loss.val, global_step= len(self.train_loader)*epoch + i )
                 print('[Iteration %d/%d] TRAIN loss: %.3f(%.3f)' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, train_loss.val, train_loss.avg))
@@ -52,7 +53,7 @@ class Trainer3DReconstruction(BaseTrainer):
                     self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = len(self.train_loader)*epoch + i)
                     print('[Iteration %d/%d] VAL loss: %.3f' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, val_loss))
 
-            if self.val_check_interval and i % self.val_check_interval ==  self.val_check_interval -1: 
+            if self.val_check_interval and (i+1) % (self.val_check_interval*self.cfg["trainer"]["accumulation_step"]) == 0: 
                 if not self.single_sample: 
                     num_val_epoch = epoch*(len(self.train_loader)// self.val_check_interval) + i//self.val_check_interval +1
                     loss = self._val_epoch(num_val_epoch)  #comment this when overfitting with 10 train and 4 val
@@ -72,13 +73,14 @@ class Trainer3DReconstruction(BaseTrainer):
         return train_loss.avg
 
 
-    def _train_step(self, blobs): 
+    def _train_step(self, blobs, i): 
         targets = blobs['data'].long().to(self.device) # [N, 32, 32, 64] 
         preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
-        loss = self.loss_func(preds, targets)
-        self.optimizer.zero_grad()
+        loss = self.loss_func(preds, targets)/self.cfg["trainer"]["accumulation_step"]
         loss.backward()
-        self.optimizer.step()
+        if (i+1) % self.cfg["trainer"]["accumulation_step"] == 0: 
+            self.optimizer.step()
+            self.optimizer.zero_grad()
         return loss.item()
 
 
