@@ -5,12 +5,12 @@ import torch
 import torch.nn as nn
 CLASS_IDS_TO_COLOR = {
     0: [0,0,0],  # unannotated: black
-    1: [139,0,0],  # wall: maroon
+    1: [0, 128, 128],  # wall: teal
     2: [255, 250, 250],  # floor: snow
     3: [70, 130, 180], #cabinet:  steel blue
     4: [240, 255, 240],  # bed: honeydew
     5: [255, 99, 71],  # chair: tomato
-    6: [255, 250, 240], # sofa: floral white
+    6: [122, 113, 25], # sofa: earth brown
     7: [64, 224, 208], # table: turquoise
     8: [119, 136, 153],  # door: light slate gray
     9: [240, 128, 128], # window: light coral
@@ -35,7 +35,7 @@ CLASS_IDS_TO_COLOR = {
     28: [255, 182, 193], # shower curtain: light pink 
     29: [60, 179, 113], # box: medium sea green 
     30: [219, 112, 147], # whiteboard: pale violet red 
-    31: [0, 128, 128], # person: teal
+    31: [139,0,0], # person: maroon
     32: [255, 0, 255], # nightstand: magenta
     33: [0, 255, 255], # toilet: cyan
     34: [216, 191, 216], # sink: thistle
