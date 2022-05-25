@@ -18,9 +18,7 @@ class ScanNet2D(Dataset):
         self.img_list = sorted(os.listdir(self.img_dir))
         self.label_list = sorted(os.listdir(self.label_dir))
         self.img_size = cfg["img_size"]
-        self.is_transform = cfg["is_transform"]
         self.augmentation = cfg["augmentation"]
-        self.normalize = cfg["normalize"]
         self.mean = cfg["mean"]
         self.std = cfg["std"]
     def __len__(self): 
@@ -28,47 +26,49 @@ class ScanNet2D(Dataset):
     def __getitem__(self, idx): 
         if torch.is_tensor(idx):
             idx = idx.tolist()
+            
+        random_vflip = random.random()
+        random_hflip = random.random()
+
         img_name = os.path.join(self.img_dir, self.img_list[idx])
-        img = Image.open(img_name)
+        image = self.load_image(img_name, self.img_size, (random_vflip, random_hflip))
 
         label_name = os.path.join(self.label_dir, self.label_list[idx])
-        target = Image.open(label_name)
+        target = self.load_image(label_name, self.img_size, (random_vflip, random_hflip))
 
-        if self.is_transform: 
-            img, target  = self.transform(img, target)
-        return img, target
-    def transform(self, img, target):
-        #resize
-        #random crop
-        #to tensor
-        #flipping
-
-        resize_img = transforms.Resize(self.img_size, interpolation = InterpolationMode.BILINEAR)
-        resize_target = transforms.Resize(self.img_size, interpolation = InterpolationMode.NEAREST)
-        totensor = transforms.ToTensor()
-        normalize = transforms.Normalize(self.mean, self.std)
-
-        img = resize_img(img)
-        target = resize_target(target)
+        return image, target
+    def resize_crop_image(self, image, new_image_dims):
+        #image: [240, 320]
+        #new_image_dims: [328, 256]
+        image_dims = [image.shape[1], image.shape[0]] # [320, 240]
+        if image_dims == new_image_dims:
+            return image
+        resize_width = int(math.floor(new_image_dims[1] * float(image_dims[0]) / float(image_dims[1])))
+        image = transforms.Resize([new_image_dims[1], resize_width], interpolation=InterpolationMode.NEAREST)(Image.fromarray(image))
+        image = transforms.CenterCrop([new_image_dims[1], new_image_dims[0]])(image)
+        return image # [256, 328,3] or [256, 328] if turn to np.array
+    def load_image(self, file, image_dims, random_set):
+        image = np.array(Image.open(file)) # [240, 320]
+        # preprocess
+        image = self.resize_crop_image(image, image_dims) # (256, 328,3)
 
         if self.augmentation: 
-            if random.random() > 0.5: 
-                img = tf.vflip(img)
-                target = tf.vflip(target)
+            if random_set[0] > 0.5: 
+                image = tf.vflip(image)
 
-            if random.random() > 0.5: 
-                img = tf.hflip(img)
-                target = tf.hflip(target)
+            if random_set[1] > 0.5: 
+                image = tf.hflip(image)
+
+        image = np.array(image)
+        if len(image.shape) == 3: # color image
+            image =  np.transpose(image, [2, 0, 1])  # move feature to front
+            image = transforms.Normalize(mean=self.mean, std=self.std)(torch.Tensor(image.astype(np.float32) / 255.0))
     
-
-        img = totensor(img)
-        if self.normalize: 
-            img = normalize(img)
-
-        target = np.array(target, dtype = np.int64)
-        target = torch.from_numpy(target)
-
-        return img, target
+        elif len(image.shape) == 2: # label image
+            image = torch.from_numpy(image.astype(np.int64))
+        else:
+            raise
+        return image
 
 class ScanNet2D3D(Dataset):
     """

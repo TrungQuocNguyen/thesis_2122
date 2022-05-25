@@ -6,30 +6,26 @@
         "freeze_dropout": false
     }, 
     "train_loader": {
-        "img_dir": "/home/tnguyen/scannet_25k_images/trainset",
-        "label_dir": "/home/tnguyen/labels_25k_images/trainset",
-        "img_size": [512,512],
-        "mean": [0.4970, 0.4465, 0.3864], 
-        "std": [0.2890, 0.2811, 0.2747], 
-        "is_transform": true,
-        "augmentation": true, 
-        "normalize": true, 
-        "batch_size": 16,
+        "img_dir": "/mnt/raid/tnguyen/scannet_250k_images/trainset",
+        "label_dir": "/mnt/raid/tnguyen/labels_250k_images/trainset",
+        "img_size": [328, 256],
+        "mean": [0.5044, 0.4525, 0.3913], 
+        "std": [0.2897, 0.2836, 0.2774], 
+        "augmentation": false, 
+        "batch_size": 64,
         "shuffle": true, 
-        "num_workers": 4
+        "num_workers": 8
     }, 
     "val_loader": {
-        "img_dir": "/home/tnguyen/scannet_25k_images/valset",
-        "label_dir": "/home/tnguyen/labels_25k_images/valset", 
-        "img_size": [512,512],
-        "mean": [0.4970, 0.4465, 0.3864], 
-        "std": [0.2890, 0.2811, 0.2747], 
-        "is_transform": true,
+        "img_dir": "/mnt/raid/tnguyen/scannet_250k_images/valset",
+        "label_dir": "/mnt/raid/tnguyen/labels_250k_images/valset", 
+        "img_size": [328, 256],
+        "mean": [0.5044, 0.4525, 0.3913], 
+        "std": [0.2897, 0.2836, 0.2774], 
         "augmentation": false, 
-        "normalize": true, 
-        "batch_size": 16,
+        "batch_size": 64,
         "shuffle": true, 
-        "num_workers": 4
+        "num_workers": 8
     }, 
     "trainer": {
         "epochs": 1500,
