@@ -17,7 +17,6 @@ class BaseTrainer:
         self.device = device
         self.epochs = cfg["trainer"]["epochs"]
         self.log_nth = cfg["trainer"]["log_nth"]
-        self.val_check_interval = cfg["trainer"]["val_check_interval"]
         self.single_sample = cfg["trainer"]["single_sample"]
         self.start_epoch = 0
 
@@ -39,8 +38,8 @@ class BaseTrainer:
         else: 
             self.dir_name = datetime.datetime.now().strftime('%m-%d_%H-%M')
 
-        self.writer = SummaryWriter(os.path.join("saved/runs/3d_reconstruction_new_dataset", self.dir_name))
-        model_path = os.path.join("saved/models/3d_reconstruction_new_dataset", self.dir_name)
+        self.writer = SummaryWriter(os.path.join("saved/runs/enet", self.dir_name))
+        model_path = os.path.join("saved/models/enet", self.dir_name)
         if not os.path.exists(model_path): 
             os.makedirs(model_path)
         self.checkpoint_path =  os.path.join(model_path, 'checkpoint.pth.tar')
