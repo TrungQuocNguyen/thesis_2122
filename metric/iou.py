@@ -3,6 +3,8 @@ import numpy as np
 from metric import metric
 from metric.confusionmatrix import ConfusionMatrix
 
+# Implementation see: https://github.com/davidtvs/PyTorch-ENet/blob/master/metric
+# This implementation is totally correct. If use later again, just use it right away without checking
 
 class IoU(metric.Metric):
     """Computes the intersection over union (IoU) per class and corresponding
@@ -58,11 +60,11 @@ class IoU(metric.Metric):
             conf_matrix[:, self.ignore_index] = 0
             conf_matrix[self.ignore_index, :] = 0
         true_positive = np.diag(conf_matrix)
-        false_positive = np.sum(conf_matrix, 0) - true_positive
-        false_negative = np.sum(conf_matrix, 1) - true_positive
+        false_positive = np.sum(conf_matrix, 0) - true_positive # np.sum(conf_matrix, 0) == pred_count
+        false_negative = np.sum(conf_matrix, 1) - true_positive # np.sum(conf_matrix, 0) == actual_count (See https://medium.com/@cyborg.team.nitr/miou-calculation-4875f918f4cb )
 
         # Just in case we get a division by 0, ignore/hide the error
         with np.errstate(divide='ignore', invalid='ignore'):
-            iou = true_positive / (true_positive + false_positive + false_negative)
+            iou = true_positive / (true_positive + false_positive + false_negative) # I = true_positive = diag(conf), U = true_pos + false_pos + false_neg = actual_count + pred_count - I
 
         return iou, np.nanmean(iou)

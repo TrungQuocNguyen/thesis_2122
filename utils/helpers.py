@@ -56,9 +56,9 @@ def mask2pixel(mask):
         img_rgb[mask == class_id, :] = rgb
     return img_rgb
 def plot_preds(imgs, targets, preds): 
-    #imgs: [N, 3, img_size, img_size]
-    #targets: [N, img_size, img_size]
-    #preds: [N, img_size, img_size]
+    #imgs: [N, 3, H, W] [N,3,256, 328]
+    #targets: [N, H, W]
+    #preds: [N, H, W]
     N = imgs.size(0)
     num_img_show = N if N <= 4 else 4
     imgs = imgs.permute(0,2,3,1).numpy()

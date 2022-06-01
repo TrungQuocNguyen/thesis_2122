@@ -187,7 +187,7 @@ class TrainerENet(BaseTrainer):
         loss.backward()
         self.optimizer.step()
 
-        _, preds = torch.max(outputs, 1) # [N, img_size, img_size]   
+        _, preds = torch.max(outputs, 1) # [N, H, W]   
         preds = preds.cpu().detach()    
         return loss.item(), preds
 
@@ -207,13 +207,13 @@ class TrainerENet(BaseTrainer):
         return miou
     def _eval_step(self, imgs, targets): 
         imgs = imgs.to(self.device)
-        targets = targets.to(self.device)
+        targets = targets.to(self.device) # [N, H, W]
 
-        outputs = self.model(imgs)
+        outputs = self.model(imgs) # (N, C, H, W)
         loss = self.loss_func(outputs, targets)
 
 
-        _, preds = torch.max(outputs, 1)
+        _, preds = torch.max(outputs, 1) # [N, H, W]
         self.metric.add(preds.detach(), targets.detach())
         
         return loss.item(), preds.cpu().detach()
