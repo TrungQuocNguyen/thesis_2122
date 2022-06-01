@@ -170,7 +170,7 @@ class TrainerENet(BaseTrainer):
                             val_iterator = iter(self.val_loader)
                             imgs, targets = next(val_iterator)
                         
-                        val_loss, val_preds = self._eval_step(imgs, targets)
+                        val_loss, val_preds = self._eval_step(imgs, targets, False)
                     self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
                     print('[Iteration %d/%d] VAL loss: %.3f   ' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, val_loss))
                     if self.add_figure_tensorboard: 
@@ -197,7 +197,7 @@ class TrainerENet(BaseTrainer):
         self.metric.reset()
         with torch.no_grad(): 
             for (imgs, targets) in self.val_loader: 
-               loss, _= self._eval_step(imgs, targets)
+               loss, _= self._eval_step(imgs, targets, True)
                val_loss.update(loss, imgs.size(0))
         iou, miou = self.metric.value()
         if self.log_nth: 
@@ -205,7 +205,7 @@ class TrainerENet(BaseTrainer):
             self.writer.add_scalar('val_epoch_mIoU', miou, global_step= epoch)
             print('[Epoch %d/%d] VAL loss: %.3f           mIoU: %.3f' %(epoch+1, self.epochs, val_loss.avg, miou))
         return miou
-    def _eval_step(self, imgs, targets): 
+    def _eval_step(self, imgs, targets, is_validating): 
         imgs = imgs.to(self.device)
         targets = targets.to(self.device) # [N, H, W]
 
@@ -214,7 +214,8 @@ class TrainerENet(BaseTrainer):
 
 
         _, preds = torch.max(outputs, 1) # [N, H, W]
-        self.metric.add(preds.detach(), targets.detach())
+        if is_validating: 
+            self.metric.add(preds.detach(), targets.detach())
         
         return loss.item(), preds.cpu().detach()
 class AverageMeter(object): 
