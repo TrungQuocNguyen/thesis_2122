@@ -4,17 +4,15 @@
         "in_channels": 3,
         "freeze_bn": false,
         "freeze_dropout": false, 
-        "load_path": "saved/models/25k_5e-4_augmented_dropout/model_best.pth.tar"
+        "load_path": "saved/models/enet/05-31_14-39 copy/model_best.pth.tar"
     }, 
     "test_loader": {
-        "img_dir": "/home/tnguyen/scannet_25k_images/testset",
-        "label_dir": "/home/tnguyen/labels_25k_images/testset",
-        "img_size": [512,512],
-        "mean": [0.4970, 0.4465, 0.3864], 
-        "std": [0.2890, 0.2811, 0.2747],
-        "is_transform": true,
+        "img_dir": "/mnt/raid/tnguyen/scannet_250k_images/valset",
+        "label_dir": "/mnt/raid/tnguyen/labels_250k_images/valset",
+        "img_size": [328,256],
+        "mean": [0.5044, 0.4525, 0.3913], 
+        "std": [0.2897, 0.2836, 0.2774], 
         "augmentation": false, 
-        "normalize": true, 
         "batch_size": 64,
         "shuffle": false, 
         "num_workers": 4

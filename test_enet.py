@@ -29,20 +29,19 @@ def main(config):
     metric = IoU(num_classes=config["models"]["num_classes"], ignore_index=config["IoU_ignore_index"])
     metric.reset()
     val_losses = []
-    val_accs = []
     mean = torch.tensor(config["test_loader"]["mean"]).reshape(1,3,1,1)
     std = torch.tensor(config["test_loader"]["std"]).reshape(1,3,1,1)
     with torch.no_grad(): 
         for i, (imgs, targets) in enumerate(test_loader, 0): 
-            loss, acc, preds= _eval_step(imgs, targets, device, model, loss_fn, metric)
+            print(i)
+            loss, preds= _eval_step(imgs, targets, device, model, loss_fn, metric)
             val_losses.append(loss)
-            val_accs.append(acc)
             if config["add_figure_tensorboard"]: 
                     writer.add_figure('test predictions vs targets', plot_preds(imgs*std+mean, targets, preds), global_step =i)
     iou, miou = metric.value()
 
-    val_loss, val_acc = np.mean(val_losses), np.mean(val_accs)
-    print('TEST loss/acc: %.3f/%.3f' %(val_loss, val_acc))
+    val_loss = np.mean(val_losses)
+    print('TEST loss: %.3f' %(val_loss))
     for label, class_iou in zip(CLASS_LABELS, iou):
         print("{0}: {1:.4f}".format(label, class_iou))
     print('TEST mIoU: %.3f' %(miou))
@@ -55,10 +54,8 @@ def _eval_step(imgs, targets, device, model, loss_fn, metric):
     loss = loss_fn(outputs, targets)
     loss = loss.cpu().detach().numpy()
     _, preds = torch.max(outputs, 1)
-    target_mask = targets >0
-    acc = np.mean((preds == targets)[target_mask].cpu().detach().numpy())
     metric.add(preds.detach(), targets.detach())
-    return loss, acc, preds.cpu().detach()
+    return loss, preds.cpu().detach()
 if __name__ =='__main__': 
     parser = argparse.ArgumentParser(description='PyTorch Training')
     parser.add_argument('-c', '--config', default='experiments/cfgs/test_enet.json',type=str,
