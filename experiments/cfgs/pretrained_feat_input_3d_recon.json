@@ -1,9 +1,9 @@
 {
     "root": "/mnt/raid/tnguyen/scannet_2d3d",
     "overfit": null,
-    "return_label": false,
+    "return_label_grid": false,
     "augmented": true,
-    "depth_shape": [328, 256],
+    "depth_shape": [41, 32],
     "image_shape": [328, 256],
     "color_mean": [0.496342, 0.466664, 0.440796],
     "color_std":  [0.277856, 0.28623, 0.291129],

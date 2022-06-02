@@ -91,7 +91,7 @@ class ScanNet2D3D(Dataset):
     def __getitem__(self, idx):
         frames = self.file['frames'][idx] # 
         data = self.file['x'][idx] # np array of [32, 32, 64]
-        label_grid = self.file['y'][idx] if self.cfg['return_label'] else None # np array of [32, 32, 64]
+        label_grid = self.file['y'][idx] if self.cfg['return_label_grid'] else None # np array of [32, 32, 64]
         scene_id = self.file['scene_id'][idx]
         scan_id = self.file['scan_id'][idx]
         world2grid = self.file['world_to_grid'][idx] # np array [4,4], float 32
