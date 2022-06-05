@@ -4,15 +4,20 @@ import torch
 import torch.nn as nn
 from utils.helpers import plot_preds
 class Trainer3DReconstruction(BaseTrainer): 
-    def __init__(self, cfg, model, loss, train_loader, val_loader, projector, optimizer, device): 
+    def __init__(self, cfg, model, loss, train_loader, val_loader, projector, optimizer, device, **kwargs): 
         super(Trainer3DReconstruction, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
+        if cfg["use_2d_feat_input"]: 
+            self.model_2d = kwargs["model_2d"]
+            self.optimizer2d = kwargs["optimizer2d"]
+            if cfg["models_2d"]["proxy_loss"]: 
+                self.criterion2d = kwargs["criterion2d"]
+        self.accum_step = self.cfg["trainer"]["accumulation_step"]
         self.val_check_interval = cfg["trainer"]["val_check_interval"]
         self.projector = projector
         self.best_loss = np.inf
         if cfg["trainer"]["load_path"]:
             self.best_loss = self.checkpoint["best_loss"]
     def train(self): 
-        self.optimizer.zero_grad()
         for epoch in range(self.start_epoch, self.epochs):
             loss = self._train_epoch(epoch)
             #if epoch % 10 == 9: 
@@ -22,39 +27,45 @@ class Trainer3DReconstruction(BaseTrainer):
     def _train_epoch(self, epoch): 
         train_loss = AverageMeter()
         val_iterator = iter(self.val_loader)
+        self.optimizer.zero_grad()
+        loss = 0.0
         for i, batch in enumerate(self.train_loader, 0):
             blobs = batch.data
-            self.model.train()
+            self.model_3d.train()
             #blobs['data']: [N, 32, 32, 64] N: batch_size
             batch_size = blobs['data'].shape[0]
             jump_flag = self._voxel_pixel_association(blobs)
             if jump_flag:
                 print('error in train batch, skipping the current batch...') 
                 continue
-            loss = self._train_step(blobs, i)*self.cfg["trainer"]["accumulation_step"]
-            train_loss.update(loss, batch_size)
-            if self.log_nth and (i+1) % (self.log_nth * self.cfg["trainer"]["accumulation_step"])== 0 : 
+            loss += self._train_step(blobs, i)
+            if (i+1) % self.accum_step == 0: 
+                train_loss.update(loss, batch_size*self.accum_step)
+                loss = 0.0
+            if self.log_nth and (i+1) % (self.log_nth * self.accum_step)== 0 : 
                 if self.single_sample: 
                     self.writer.add_scalar('train_loss', train_loss.val, global_step= len(self.train_loader)*epoch + i )
                 print('[Iteration %d/%d] TRAIN loss: %.3f(%.3f)' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, train_loss.val, train_loss.avg))
                 if not self.single_sample: 
-                    self.model.eval()
+                    self.model_3d.eval()
                     with torch.no_grad(): 
-                        try: 
-                            blobs = next(val_iterator).data
-                        except StopIteration: 
-                            val_iterator = iter(self.val_loader)
-                            blobs = next(val_iterator).data
-                        jump_flag = self._voxel_pixel_association(blobs)
-                        if jump_flag: 
-                            print('error in single validation batch, skipping the current batch...')
-                            continue
-                        val_loss = self._eval_step(blobs)
+                        val_loss = 0.0
+                        for j in range(self.accum_step): 
+                            try: 
+                                blobs = next(val_iterator).data
+                            except StopIteration: 
+                                val_iterator = iter(self.val_loader)
+                                blobs = next(val_iterator).data
+                            jump_flag = self._voxel_pixel_association(blobs)
+                            if jump_flag: 
+                                print('error in single validation batch, skipping the current batch...')
+                                continue
+                            val_loss += self._eval_step(blobs)
                     #self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
                     self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = len(self.train_loader)*epoch + i)
                     print('[Iteration %d/%d] VAL loss: %.3f' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, val_loss))
 
-            if self.val_check_interval and (i+1) % (self.val_check_interval*self.cfg["trainer"]["accumulation_step"]) == 0: 
+            if self.val_check_interval and (i+1) % (self.val_check_interval*self.accum_step) == 0: 
                 if not self.single_sample: 
                     num_val_epoch = epoch*(len(self.train_loader)// self.val_check_interval) + i//self.val_check_interval +1
                     loss = self._val_epoch(num_val_epoch)  #comment this when overfitting with 10 train and 4 val
@@ -62,7 +73,7 @@ class Trainer3DReconstruction(BaseTrainer):
                 self.best_loss = min(loss, self.best_loss)
                 self.save_checkpoint({
                     'epoch': epoch, 
-                    'state_dict': self.model.state_dict(), 
+                    'state_dict': self.model_3d.state_dict(), 
                     'best_loss': self.best_loss, 
                     'optimizer': self.optimizer.state_dict(),
                 }, is_best)
@@ -76,8 +87,8 @@ class Trainer3DReconstruction(BaseTrainer):
 
     def _train_step(self, blobs, i): 
         targets = blobs['data'].long().to(self.device) # [N, 32, 32, 64] 
-        preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
-        loss = self.loss_func(preds, targets)/self.cfg["trainer"]["accumulation_step"]
+        preds = self.model_3d(blobs, self.device) #[N, 2, 32, 32, 64]
+        loss = self.criterion(preds, targets)/self.accum_step
         loss.backward()
         if (i+1) % self.cfg["trainer"]["accumulation_step"] == 0: 
             self.optimizer.step()
@@ -86,18 +97,22 @@ class Trainer3DReconstruction(BaseTrainer):
 
 
     def _val_epoch(self, epoch): 
+        loss = 0.0
         val_loss = AverageMeter()
-        self.model.eval()
+        self.model_3d.eval()
         with torch.no_grad(): 
-            for sample in self.val_loader:
+            for i,sample in enumerate(self.val_loader):
                 blobs = sample.data
                 batch_size = blobs['data'].shape[0] 
                 jump_flag = self._voxel_pixel_association(blobs)
                 if jump_flag:
                     print('error in validation batch, skipping the current batch...')
                     continue
-                loss= self._eval_step(blobs)
-                val_loss.update(loss, batch_size)
+                loss += self._eval_step(blobs)
+                if (i+1) % self.accum_step == 0: 
+                    val_loss.update(loss, batch_size*self.accum_step)
+                    loss = 0.0
+
         if self.log_nth:  
             self.writer.add_scalar('val_epoch_loss', val_loss.avg, global_step= epoch)
             print('[VAL epoch %d] VAL loss: %.3f' %(epoch, val_loss.avg))
@@ -105,8 +120,8 @@ class Trainer3DReconstruction(BaseTrainer):
 
     def _eval_step(self, blobs): 
         targets = blobs['data'].long().to(self.device) # [N, 32, 32, 64]
-        preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
-        loss = self.loss_func(preds, targets)
+        preds = self.model_3d(blobs, self.device) #[N, 2, 32, 32, 64]
+        loss = self.criterion(preds, targets)/self.accum_step
         return loss.item()
     def _voxel_pixel_association(self, blobs): 
         batch_size = blobs['data'].shape[0]
