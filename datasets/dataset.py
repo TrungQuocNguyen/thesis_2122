@@ -121,7 +121,7 @@ class ScanNet2D3D(Dataset):
         dict_return = {
             'data': data,  # np float array [32, 32, 64]
             'label': label_grid, # np float array of [32, 32, 64]
-            'nearest_images': nearest_images, # dict of {'depths': # list of 5 np array [256, 328], 'images':  # list of 5 torch tensor size [3, 256, 328], value approximately in [-1.7,1.8], 'poses':# list of  5 np array [4,4], 'world2grid': np array 4x4, 'frameids':  list of 5 image id}
+            'nearest_images': nearest_images, # dict of {'depths': # list of 5 np array [depth_shape[1], depth_shape[0]], 'images':  # list of 5 torch tensor size [3, image_shape[1], image_shape[0]], value approximately in [-1.7,1.8], 'poses':# list of  5 np array [4,4], 'world2grid': np array 4x4, 'frameids':  list of 5 image id}
             'scan_name': scene_name
         }
 

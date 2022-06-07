@@ -25,14 +25,14 @@ class DataCollator(object):
                 x['images'] = x['images'][:num_images]
                 x['depths'] = x['depths'][:num_images]
                 x['poses'] = x['poses'][:num_images]
-            depths.append(torch.from_numpy(np.array(x['depths']))) # list of torch tensor size [max_num_images, 256, 328]
+            depths.append(torch.from_numpy(np.array(x['depths']))) # list of torch tensor size [max_num_images, depth_shape[1], depth_shape[0]]
             poses.append(torch.from_numpy(np.array(x['poses']))) #list of torch tensor size [max_num_images, 4,4]
             world2grid.append(torch.from_numpy(x['world2grid']).expand(num_images, 4, 4)) #list of torch tensor size [max_num_images, 4,4](expanded from 1 to max_num_images)
             frameids.append(x['frameids'])
             scan_name.append(b['scan_name'])
 
         nearest_images = {
-            'images': [torch.from_numpy(np.stack(x['nearest_images']['images'], 0).astype(np.float32)) for x in batch], # list of tensor, each tensor size [max_num_images, 3, 256, 328]
+            'images': [torch.from_numpy(np.stack(x['nearest_images']['images'], 0).astype(np.float32)) for x in batch], # list of tensor, each tensor size [max_num_images, 3, image_shape[1], image_shape[0]]
             'depths': depths, 'poses': poses, 'world2grid': world2grid, 'frameids': frameids
         }
         self.data = {
