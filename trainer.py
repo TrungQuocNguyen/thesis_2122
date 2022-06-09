@@ -113,7 +113,7 @@ class Trainer3DReconstruction(BaseTrainer):
             if self.val_check_interval and (i+1) % (self.val_check_interval*self.accum_step) == 0: 
                 if not self.single_sample: 
                     num_val_epoch = epoch*(len(self.train_loader)// self.val_check_interval) + i//self.val_check_interval +1
-                    loss = self._val_epoch(num_val_epoch)  #comment this when overfitting with 10 train and 4 val
+                    loss, loss2d = self._val_epoch(num_val_epoch)  #comment this when overfitting with 10 train and 4 val
                 is_best = loss < self.best_loss
                 self.best_loss = min(loss, self.best_loss)
                 
@@ -133,10 +133,16 @@ class Trainer3DReconstruction(BaseTrainer):
                 }, is_best, self.checkpoint_2d_optimizer, self.best_2d_optimizer)
                 
                 val_epoch_loss = loss 
+                val_epoch_loss2d = loss2d
+                loss = 0.0
+                loss2d = 0.0
         # comment this block when overfitting with 10 train and 4 val    
         if self.log_nth and not self.single_sample: 
             print('[Epoch %d/%d] TRAIN loss: %.3f' %(epoch+1, self.epochs, train_loss.avg))
             self.writer.add_scalars('epoch_loss', {'train_loss': train_loss.avg, 'val_loss': val_epoch_loss }, global_step = epoch)
+            if self.proxy_loss: 
+                print('[Epoch %d/%d] TRAIN loss2d: %.3f' %(epoch+1, self.epochs, train_loss2d.avg))
+                self.writer.add_scalars('epoch_loss2d', {'train_loss': train_loss2d.avg, 'val_loss': val_epoch_loss2d }, global_step = epoch)
         return train_loss.avg
 
 
@@ -150,7 +156,6 @@ class Trainer3DReconstruction(BaseTrainer):
             blobs['feat_2d'] =  []
             for i in range(batch_size):
                 imageft, mask = self.model_2d(blobs['nearest_images']['images'][i].to(self.device)) # feat: [max_num_images, 128, 32, 41], mask: [max_num_images, 41, 256, 328]
-                #*** WARNING ALERT: WE RUN MODEL_2D MANY TIMES WITHIN A BATCH. IS IT ALLOWED??? ***#
                 blobs['feat_2d'].append(imageft) # list of tensor, each tensor size [max_num_images, 128, depth_shape[1], depth_shape[0]]
                 if self.proxy_loss: 
                     predicted_images.append(mask)
@@ -210,7 +215,10 @@ class Trainer3DReconstruction(BaseTrainer):
             if self.proxy_loss: 
                 self.writer.add_scalar('val_epoch_loss2d', val_loss2d.avg, global_step= epoch)
                 print('[VAL epoch %d] VAL loss2d: %.3f' %(epoch, val_loss2d.avg))
-        return val_loss.avg
+        if self.proxy_loss: 
+            return val_loss.avg, val_loss2d.avg
+        else: 
+            return val_loss.avg
 
     def _eval_step(self, blobs): 
         targets = blobs['data'].long().to(self.device) # [N, 32, 32, 64]
