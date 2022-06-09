@@ -202,6 +202,7 @@ class ENet(nn.Module):
         x = self.bottleneck36(x)
         x = self.bottleneck37(x)
         x = self.bottleneck38(x)
+        out_encoder = x
 
         # Stage 4
         x = self.bottleneck40(x, indices=indices2, output_size=sz2)
@@ -214,7 +215,7 @@ class ENet(nn.Module):
 
         # Stage 6
         x = self.fullconv(x)
-        return x 
+        return out_encoder, x
 
     def freeze_bn(self):
         for module in self.modules():

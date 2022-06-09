@@ -100,6 +100,7 @@ class ScanNet2D3D(Dataset):
         images = []
         poses = []
         frameids = []
+        label_images = []
         nearest_images = {}
 
         scene_name = 'scene' + '{:04d}'.format(scene_id) + '_' + '{:02d}'.format(scan_id) # e.g scene0528_00
@@ -114,9 +115,14 @@ class ScanNet2D3D(Dataset):
                 im_pre = self.load_image(image_file, self.cfg["image_shape"])
                 images.append(im_pre)
                 frameids.append(frameid)
+                if self.cfg['model_2d']['proxy_loss']: 
+                    label_file = os.path.join(self.cfg['root'], scene_name, 'label', str(frameid) + '.png')
+                    label_images.append(self.load_image(label_file, self.cfg["image_shape"])) # we train 2D proxy loss with image size [328, 256], which is different from 3DMV, who train with image size [41, 32]. We may consider this option later on 
 
             
         nearest_images = {'depths': depths, 'images': images, 'poses': poses, 'world2grid': world2grid, 'frameids': frameids}
+        if self.cfg['model_2d']['proxy_loss']: 
+            nearest_images['label_images'] = label_images # list of 5 torch tensor size [image_shape[1], image_shape[0]]
         # dict return
         dict_return = {
             'data': data,  # np float array [32, 32, 64]
@@ -163,7 +169,7 @@ class ScanNet2D3D(Dataset):
             image =  np.transpose(image, [2, 0, 1])  # move feature to front
             image = transforms.Normalize(mean=self.cfg["color_mean"], std=self.cfg["color_std"])(torch.Tensor(image.astype(np.float32) / 255.0))
         elif len(image.shape) == 2: # label image
-            image = np.expand_dims(image, 0)
+            image = torch.from_numpy(image.astype(np.int64))
         else:
             raise
         return image

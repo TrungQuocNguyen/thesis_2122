@@ -32,12 +32,14 @@ class DataCollator(object):
             scan_name.append(b['scan_name'])
 
         nearest_images = {
-            'images': [torch.from_numpy(np.stack(x['nearest_images']['images'], 0).astype(np.float32)) for x in batch], # list of tensor, each tensor size [max_num_images, 3, image_shape[1], image_shape[0]]
+            'images': [torch.stack(x['nearest_images']['images'], 0) for x in batch], # list of tensor, each tensor size [max_num_images, 3, image_shape[1], image_shape[0]]
             'depths': depths, 'poses': poses, 'world2grid': world2grid, 'frameids': frameids
         }
+        if cfg['model_2d']['proxy_loss']: 
+            nearest_images['label_images'] = [torch.stack(x['nearest_images']['label_images'], 0) for x in batch] # list of tensor, each tensor size [max_num_images, image_shape[1], image_shape[0]]
         self.data = {
             'data': torch.stack([torch.from_numpy(x['data']) for x in batch], 0), # tensor [batch_size,32,32,64]
-            'label': torch.stack([torch.from_numpy(x['label']) for x in batch], 0) if cfg['return_label'] else None, # tensor [batch_size,32,32,64]
+            'label': torch.stack([torch.from_numpy(x['label']) for x in batch], 0) if cfg['return_label_grid'] else None, # tensor [batch_size,32,32,64]
             'nearest_images': nearest_images,
             'scan_name': scan_name
         }
@@ -48,7 +50,8 @@ class DataCollator(object):
         self.data['nearest_images']['depths'] = [x.pin_memory() for x in self.data['nearest_images']['depths']]
         self.data['nearest_images']['poses'] = [x.pin_memory() for x in self.data['nearest_images']['poses']]
         self.data['nearest_images']['world2grid'] = [x.clone().pin_memory() for x in self.data['nearest_images']['world2grid']]
-
+        if self.cfg['model_2d']['proxy_loss']: 
+            self.data['nearest_images']['label_images'] = [x.pin_memory() for x in self.data['nearest_images']['label_images']]
         return self
 
 

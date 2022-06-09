@@ -3,6 +3,7 @@
     "overfit": null,
     "return_label_grid": false,
     "augmented": true,
+    "use_2d_feat_input": false,
     "depth_shape": [328, 256],
     "image_shape": [328, 256],
     "color_mean": [0.496342, 0.466664, 0.440796],
@@ -30,7 +31,9 @@
         "accumulation_step": 8, 
         "single_sample" : false,
         "load_path": "",
-        "plot_gradient": false
+        "plot_gradient": false, 
+        "resume_training": false, 
+        "training_type": "3D"
     },
     "optimizer": {
         "learning_rate": 1e-3,

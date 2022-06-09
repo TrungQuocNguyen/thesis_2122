@@ -10,7 +10,7 @@ class BaseTrainer:
     def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, device):
         self.cfg = cfg
         self.model = model
-        self.loss_func = loss
+        self.criterion = loss
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.optimizer = optimizer
@@ -19,31 +19,38 @@ class BaseTrainer:
         self.log_nth = cfg["trainer"]["log_nth"]
         self.single_sample = cfg["trainer"]["single_sample"]
         self.start_epoch = 0
+        self.resume_training = cfg["trainer"]["resume_training"]
 
-        if cfg["trainer"]["load_path"]:
+        if self.resume_training:
             checkpoint_path = cfg["trainer"]["load_path"]
-            if os.path.isfile(checkpoint_path):
-                print("Loading checkpoint '{}'".format(checkpoint_path))
-                self.checkpoint = torch.load(checkpoint_path)
-                self.start_epoch = self.checkpoint["epoch"]
-                self.model.load_state_dict(self.checkpoint["state_dict"])
-                self.optimizer.load_state_dict(self.checkpoint["optimizer"])
-                for g in self.optimizer.param_groups:
-                    g['lr'] = self.cfg["optimizer"]["learning_rate"] 
-
-
-                self.dir_name = os.path.basename(os.path.dirname(checkpoint_path))
-            else:
-                print("No checkpoint found at {}".format(checkpoint_path))
+            assert os.path.isfile(checkpoint_path), "No checkpoint found at {}".format(checkpoint_path)
+            print("Loading checkpoint of 3D network'{}'".format(checkpoint_path))
+            self.checkpoint = torch.load(checkpoint_path)
+            self.start_epoch = self.checkpoint["epoch"]
+            self.model.load_state_dict(self.checkpoint["state_dict"])
+            self.optimizer.load_state_dict(self.checkpoint["optimizer"])
+            for g in self.optimizer.param_groups:
+                g['lr'] = self.cfg["optimizer"]["learning_rate"] 
+            self.dir_name = os.path.basename(os.path.dirname(checkpoint_path))
         else: 
             self.dir_name = datetime.datetime.now().strftime('%m-%d_%H-%M')
 
-        self.writer = SummaryWriter(os.path.join("saved/runs/enet", self.dir_name))
-        model_path = os.path.join("saved/models/enet", self.dir_name)
-        if not os.path.exists(model_path): 
-            os.makedirs(model_path)
-        self.checkpoint_path =  os.path.join(model_path, 'checkpoint.pth.tar')
-        self.best_model_path = os.path.join(model_path, 'model_best.pth.tar')
+        if cfg["trainer"]["training_type"] == "3D": 
+            if cfg["use_2d_feat_input"]: 
+                base_path = "3d_recon_2dfeat_input"
+            else: 
+                base_path = "3d_recon_RGB_input"
+        elif cfg["trainer"]["training_type"] == "2D":
+            base_path = "enet"
+        else: 
+            raise ValueError("training_type is unknown")
+
+        self.writer = SummaryWriter(os.path.join("saved/runs", base_path, self.dir_name))
+        self.model_folder = os.path.join("saved/models", base_path, self.dir_name)
+        if not os.path.exists(self.model_folder): 
+            os.makedirs(self.model_folder)
+        self.checkpoint_path =  os.path.join(self.model_folder, 'checkpoint.pth.tar')
+        self.best_model_path = os.path.join(self.model_folder, 'model_best.pth.tar')
         #what would happen if I load from checkpoint.pth.tar / model_best.pth.tar ?
         #load from checkpoint.pth.tar: continue training from where we left off
         #load from model_best.pth.tar: training from the best model 
@@ -56,11 +63,11 @@ class BaseTrainer:
         raise NotImplementedError
     def _val_epoch(self, epoch): 
         raise NotImplementedError
-    def save_checkpoint(self, state, is_best): 
-        torch.save(state, self.checkpoint_path)
+    def save_checkpoint(self, state, is_best, checkpoint_path, best_model_path): 
+        torch.save(state, checkpoint_path)
         if is_best:
             print("Saving best model path")
-            shutil.copyfile(self.checkpoint_path, self.best_model_path)
+            shutil.copyfile(checkpoint_path, best_model_path)
     def plot_grad_flow(self,named_parameters, epoch):
         '''Plots the gradients flowing through different layers in the net during training.
         Can be used for checking for possible gradient vanishing / exploding problems.

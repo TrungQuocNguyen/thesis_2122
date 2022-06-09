@@ -3,6 +3,7 @@
     "overfit": null,
     "return_label_grid": false,
     "augmented": true,
+    "use_2d_feat_input": true, 
     "depth_shape": [41, 32],
     "image_shape": [328, 256],
     "color_mean": [0.496342, 0.466664, 0.440796],
@@ -23,17 +24,28 @@
     "fy": 1170.187988,
     "mx": 647.75,
     "my": 483.75,
+    "model_2d": {
+        "num_classes": 41,
+        "in_channels": 3,
+        "freeze_bn": false,
+        "freeze_dropout": false, 
+        "proxy_loss": true, 
+        "ignore_index": 0, 
+        "load_path_2d": "/home/tnguyen/thesis_2122/saved/models/enet/enet_for_3d_256x328/model_best.pth.tar"
+    },
     "trainer": {
         "epochs": 30,
         "log_nth": 1,
-        "val_check_interval": 7504,
+        "val_check_interval": 3752,
         "accumulation_step": 8, 
         "single_sample" : false,
         "load_path": "",
-        "plot_gradient": false
+        "plot_gradient": false, 
+        "resume_training": false, 
+        "training_type": "3D"
     },
     "optimizer": {
-        "learning_rate": 1e-3,
+        "learning_rate": 3.33e-4,
         "weight_decay": 0
     }
 }
