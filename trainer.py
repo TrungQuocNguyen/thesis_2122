@@ -172,11 +172,10 @@ class Trainer3DReconstruction(BaseTrainer):
         if not self.proxy_loss: 
             loss.backward()
         else: 
-            loss.backward(retain_graph = True)
             predicted_images = torch.cat(predicted_images) # [max_num_images*batch_size, 41, 256, 328]
             target_images = torch.cat(target_images).to(self.device) # [max_num_images*batch_size, 256, 328]
             loss2d = self.criterion2d(predicted_images, target_images)/self.accum_step
-            loss2d.backward()
+            (loss + loss2d).backward()
 
         if (i+1) % self.accum_step == 0: 
             self.optimizer.step()
