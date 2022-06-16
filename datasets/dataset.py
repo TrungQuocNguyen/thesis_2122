@@ -18,6 +18,7 @@ class ScanNet2D(Dataset):
         self.img_list = sorted(os.listdir(self.img_dir))
         self.label_list = sorted(os.listdir(self.label_dir))
         self.img_size = cfg["img_size"]
+        self.label_img_size = cfg["label_img_size"]
         self.augmentation = cfg["augmentation"]
         self.mean = cfg["mean"]
         self.std = cfg["std"]
@@ -34,7 +35,7 @@ class ScanNet2D(Dataset):
         image = self.load_image(img_name, self.img_size, (random_vflip, random_hflip))
 
         label_name = os.path.join(self.label_dir, self.label_list[idx])
-        target = self.load_image(label_name, self.img_size, (random_vflip, random_hflip))
+        target = self.load_image(label_name, self.label_img_size, (random_vflip, random_hflip))
 
         return image, target
     def resize_crop_image(self, image, new_image_dims):
@@ -117,7 +118,7 @@ class ScanNet2D3D(Dataset):
                 frameids.append(frameid)
                 if self.cfg['model_2d']['proxy_loss']: 
                     label_file = os.path.join(self.cfg['root'], scene_name, 'label', str(frameid) + '.png')
-                    label_images.append(self.load_image(label_file, self.cfg["image_shape"])) # we train 2D proxy loss with image size [328, 256], which is different from 3DMV, who train with image size [41, 32]. We may consider this option later on 
+                    label_images.append(self.load_image(label_file, self.cfg["depth_shape"])) # we train 2D proxy loss with image size [328, 256], which is different from 3DMV, who train with image size [41, 32]. We may consider this option later on 
 
             
         nearest_images = {'depths': depths, 'images': images, 'poses': poses, 'world2grid': world2grid, 'frameids': frameids}

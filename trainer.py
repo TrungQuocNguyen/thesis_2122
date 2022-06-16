@@ -21,9 +21,11 @@ class Trainer3DReconstruction(BaseTrainer):
             if self.proxy_loss: 
                 print("Using proxy loss for 2D features")
                 self.criterion2d = kwargs["criterion2d"]
+                self.add_figure_tensorboard = cfg["trainer"]["add_figure_tensorboard"]
             if self.resume_training: 
                 load_path = 'optimizer_2d_best.pth.tar' if 'best' in cfg["trainer"]["load_path"] else 'checkpoint_2d_optimizer.pth.tar'
-                self.optimizer2d.load_state_dict(os.path.join(os.path.dirname(cfg["trainer"]["load_path"]), load_path))
+                self.optimizer2d.load_state_dict(torch.load(os.path.join(os.path.dirname(cfg["trainer"]["load_path"]), load_path))['optimizer'])
+        self.num_images = self.cfg["num_images"]
         self.accum_step = self.cfg["trainer"]["accumulation_step"]
         self.val_check_interval = cfg["trainer"]["val_check_interval"]
         self.projector = projector
@@ -72,7 +74,7 @@ class Trainer3DReconstruction(BaseTrainer):
                 train_loss.update(loss, batch_size*self.accum_step)
                 loss = 0.0
                 if self.proxy_loss: 
-                    train_loss2d.update(loss2d, batch_size*self.accum_step)
+                    train_loss2d.update(loss2d, self.num_images*batch_size*self.accum_step)
                     loss2d =0.0
                 
             if self.log_nth and (i+1) % (self.log_nth * self.accum_step)== 0 : 
@@ -113,7 +115,10 @@ class Trainer3DReconstruction(BaseTrainer):
             if self.val_check_interval and (i+1) % (self.val_check_interval*self.accum_step) == 0: 
                 if not self.single_sample: 
                     num_val_epoch = epoch*(len(self.train_loader)// self.val_check_interval) + i//self.val_check_interval +1
-                    loss, loss2d = self._val_epoch(num_val_epoch)  #comment this when overfitting with 10 train and 4 val
+                    if self.proxy_loss: 
+                        loss, loss2d = self._val_epoch(num_val_epoch)  #comment this when overfitting with 10 train and 4 val
+                    else: 
+                        loss = self._val_epoch(num_val_epoch)
                 is_best = loss < self.best_loss
                 self.best_loss = min(loss, self.best_loss)
                 
@@ -133,9 +138,10 @@ class Trainer3DReconstruction(BaseTrainer):
                 }, is_best, self.checkpoint_2d_optimizer, self.best_2d_optimizer)
                 
                 val_epoch_loss = loss 
-                val_epoch_loss2d = loss2d
                 loss = 0.0
-                loss2d = 0.0
+                if self.proxy_loss: 
+                    val_epoch_loss2d = loss2d 
+                    loss2d = 0.0
         # comment this block when overfitting with 10 train and 4 val    
         if self.log_nth and not self.single_sample: 
             print('[Epoch %d/%d] TRAIN loss: %.3f' %(epoch+1, self.epochs, train_loss.avg))
@@ -172,7 +178,7 @@ class Trainer3DReconstruction(BaseTrainer):
             loss2d = self.criterion2d(predicted_images, target_images)/self.accum_step
             loss2d.backward()
 
-        if (i+1) % self.cfg["trainer"]["accumulation_step"] == 0: 
+        if (i+1) % self.accum_step == 0: 
             self.optimizer.step()
             self.optimizer.zero_grad()
             if self.cfg['use_2d_feat_input']: 
@@ -206,7 +212,7 @@ class Trainer3DReconstruction(BaseTrainer):
                     val_loss.update(loss, batch_size*self.accum_step)
                     loss = 0.0
                     if self.proxy_loss: 
-                        val_loss2d.update(loss2d, batch_size*self.accum_step)
+                        val_loss2d.update(loss2d, self.num_images*batch_size*self.accum_step)
                         loss2d = 0.0
 
         if self.log_nth:  
@@ -315,8 +321,8 @@ class TrainerENet(BaseTrainer):
         imgs = imgs.to(self.device) # (N, 3, H,W)
         targets = targets.to(self.device) # (N, H, W)
         self.optimizer.zero_grad()
-        outputs = self.model(imgs) # (N, C, H, W)
-        loss = self.loss_func(outputs, targets)
+        _, outputs = self.model(imgs) # (N, C, H, W)
+        loss = self.criterion(outputs, targets)
         loss.backward()
         self.optimizer.step()
 
@@ -342,8 +348,8 @@ class TrainerENet(BaseTrainer):
         imgs = imgs.to(self.device)
         targets = targets.to(self.device) # [N, H, W]
 
-        outputs = self.model(imgs) # (N, C, H, W)
-        loss = self.loss_func(outputs, targets)
+        _, outputs = self.model(imgs) # (N, C, H, W)
+        loss = self.criterion(outputs, targets)
 
 
         _, preds = torch.max(outputs, 1) # [N, H, W]

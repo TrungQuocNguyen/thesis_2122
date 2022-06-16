@@ -9,6 +9,7 @@
         "img_dir": "/mnt/raid/tnguyen/scannet_250k_images/trainset",
         "label_dir": "/mnt/raid/tnguyen/labels_250k_images/trainset",
         "img_size": [328, 256],
+        "label_img_size": [41, 32],
         "mean": [0.5044, 0.4525, 0.3913], 
         "std": [0.2897, 0.2836, 0.2774], 
         "augmentation": false, 
@@ -20,6 +21,7 @@
         "img_dir": "/mnt/raid/tnguyen/scannet_250k_images/valset",
         "label_dir": "/mnt/raid/tnguyen/labels_250k_images/valset", 
         "img_size": [328, 256],
+        "label_img_size": [41, 32],
         "mean": [0.5044, 0.4525, 0.3913], 
         "std": [0.2897, 0.2836, 0.2774], 
         "augmentation": false, 
@@ -33,6 +35,7 @@
         "single_sample" : false, 
         "add_figure_tensorboard": true,  
         "load_path": "", 
+        "resume_training": false,
         "training_type": "2D"
     }, 
     "ignore_index": 0, 

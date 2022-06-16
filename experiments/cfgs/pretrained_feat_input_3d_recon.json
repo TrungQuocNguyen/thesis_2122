@@ -6,9 +6,9 @@
     "use_2d_feat_input": true, 
     "depth_shape": [41, 32],
     "image_shape": [328, 256],
-    "color_mean": [0.496342, 0.466664, 0.440796],
-    "color_std":  [0.277856, 0.28623, 0.291129],
-    "batch_size": 4,
+    "color_mean": [0.5044, 0.4525, 0.3913],
+    "color_std":  [0.2897, 0.2836, 0.2774],
+    "batch_size": 8,
     "shuffle_train": true,
     "shuffle_val": true,
     "num_workers": 8,
@@ -31,7 +31,7 @@
         "freeze_dropout": false, 
         "proxy_loss": true, 
         "ignore_index": 0, 
-        "load_path_2d": "/home/tnguyen/thesis_2122/saved/models/enet/enet_for_3d_256x328/model_best.pth.tar"
+        "load_path_2d": "/home/tnguyen/thesis_2122/saved/models/enet/enet_for_3d_32x41/model_best.pth.tar"
     },
     "trainer": {
         "epochs": 30,
@@ -39,13 +39,14 @@
         "val_check_interval": 3752,
         "accumulation_step": 8, 
         "single_sample" : false,
+        "add_figure_tensorboard": true,  
         "load_path": "",
         "plot_gradient": false, 
         "resume_training": false, 
         "training_type": "3D"
     },
     "optimizer": {
-        "learning_rate": 3.33e-4,
+        "learning_rate": 1e-3,
         "weight_decay": 0
     }
 }
