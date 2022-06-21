@@ -263,7 +263,7 @@ class Trainer3DReconstruction(BaseTrainer):
             target_images = torch.cat(target_images).to(self.device) # [max_num_images*batch_size, 256, 328]
             loss2d = self.criterion2d(predicted_images, target_images)/self.accum_step
         if is_validating: 
-            preds = torch.max(preds, 1) # preds: [N, 32, 32, 64], cuda
+            _, preds = torch.max(preds, 1) # preds: [N, 32, 32, 64], cuda
             targets[targets == -100] = 2 #target: [N, 32, 32, 64], cuda
             self.metric_3d.add(preds.detach(), targets.detach())
         return loss.item(), loss2d.item(), tensorboard_preds
