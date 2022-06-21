@@ -90,7 +90,7 @@ def train(cfg):
         
         model_2d.to(device)
         model_2d.eval() # set all layer to evaluation mode, and later set trainable layer to train mode 
-        optimizer2d = optim.RAdam(model_2d.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
+        optimizer2d = optim.RAdam(model_2d.parameters(), lr = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"])
         if cfg["model_2d"]["proxy_loss"]: 
             criterion2d = nn.CrossEntropyLoss(ignore_index = cfg["model_2d"]["ignore_index"])
         else: 
