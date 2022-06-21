@@ -7,6 +7,7 @@ from utils.helpers import plot_preds
 class Trainer3DReconstruction(BaseTrainer): 
     def __init__(self, cfg, model, loss, train_loader, val_loader, projector, optimizer, device, metric_3d,  **kwargs): 
         super(Trainer3DReconstruction, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device, metric_3d)
+        self.proxy_loss = cfg["model_2d"]["proxy_loss"]
         if cfg["use_2d_feat_input"]:
 
             self.checkpoint_2d_model = os.path.join(self.model_folder, 'checkpoint_2d_model.pth.tar')
@@ -17,7 +18,6 @@ class Trainer3DReconstruction(BaseTrainer):
             print("Using 2D features from ENet as input")
             self.model_2d = kwargs["model_2d"]
             self.optimizer2d = kwargs["optimizer2d"]
-            self.proxy_loss = cfg["model_2d"]["proxy_loss"]
             if self.proxy_loss: 
                 print("Using proxy loss for 2D features")
                 self.criterion2d = kwargs["criterion2d"]
