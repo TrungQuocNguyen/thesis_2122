@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 from utils.helpers import plot_preds
 class Trainer3DReconstruction(BaseTrainer): 
-    def __init__(self, cfg, model, loss, train_loader, val_loader, projector, optimizer, device, **kwargs): 
-        super(Trainer3DReconstruction, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
+    def __init__(self, cfg, model, loss, train_loader, val_loader, projector, optimizer, device, metric_3d,  **kwargs): 
+        super(Trainer3DReconstruction, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device, metric_3d)
         if cfg["use_2d_feat_input"]:
 
             self.checkpoint_2d_model = os.path.join(self.model_folder, 'checkpoint_2d_model.pth.tar')
@@ -106,7 +106,7 @@ class Trainer3DReconstruction(BaseTrainer):
                             if jump_flag: 
                                 print('error in single validation batch, skipping the current batch...')
                                 continue
-                            temp1, temp2, tensorboard_preds= self._eval_step(blobs)
+                            temp1, temp2, tensorboard_preds= self._eval_step(blobs, False)
                             val_loss += temp1
                             if self.proxy_loss: 
                                 val_loss2d += temp2
@@ -206,6 +206,7 @@ class Trainer3DReconstruction(BaseTrainer):
         self.model.eval()
         if self.cfg['use_2d_feat_input']: 
             self.model_2d.eval()
+        self.metric_3d.reset()
         with torch.no_grad(): 
             for i,sample in enumerate(self.val_loader):
                 blobs = sample.data
@@ -214,7 +215,7 @@ class Trainer3DReconstruction(BaseTrainer):
                 if jump_flag:
                     print('error in validation batch, skipping the current batch...')
                     continue
-                temp1, temp2, _= self._eval_step(blobs)
+                temp1, temp2, _= self._eval_step(blobs, True)
                 loss+= temp1
                 if self.proxy_loss: 
                     loss2d += temp2
@@ -224,19 +225,20 @@ class Trainer3DReconstruction(BaseTrainer):
                     if self.proxy_loss: 
                         val_loss2d.update(loss2d, self.num_images*batch_size*self.accum_step)
                         loss2d = 0.0
-
+        iou, _ = self.metric_3d.value()
         if self.log_nth:  
             self.writer.add_scalar('val_epoch_loss', val_loss.avg, global_step= epoch)
             print('[VAL epoch %d] VAL loss: %.3f' %(epoch, val_loss.avg))
             if self.proxy_loss: 
                 self.writer.add_scalar('val_epoch_loss2d', val_loss2d.avg, global_step= epoch)
                 print('[VAL epoch %d] VAL loss2d: %.3f' %(epoch, val_loss2d.avg))
+            self.writer.add_scalar('val_epoch_IoU', iou[1], global_step= epoch)
         if self.proxy_loss: 
             return val_loss.avg, val_loss2d.avg
         else: 
             return val_loss.avg
 
-    def _eval_step(self, blobs): 
+    def _eval_step(self, blobs, is_validating): 
         targets = blobs['data'].long().to(self.device) # [N, 32, 32, 64]
         batch_size = targets.shape[0]
         predicted_images = []
@@ -260,6 +262,10 @@ class Trainer3DReconstruction(BaseTrainer):
             predicted_images = torch.cat(predicted_images) # [max_num_images*batch_size, 41, 256, 328]
             target_images = torch.cat(target_images).to(self.device) # [max_num_images*batch_size, 256, 328]
             loss2d = self.criterion2d(predicted_images, target_images)/self.accum_step
+        if is_validating: 
+            preds = torch.max(preds, 1) # preds: [N, 32, 32, 64], cuda
+            targets[targets == -100] = 2 #target: [N, 32, 32, 64], cuda
+            self.metric_3d.add(preds.detach(), targets.detach())
         return loss.item(), loss2d.item(), tensorboard_preds
     def _voxel_pixel_association(self, blobs): 
         batch_size = blobs['data'].shape[0]

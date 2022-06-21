@@ -15,6 +15,7 @@ from trainer import Trainer3DReconstruction
 from utils.helpers import print_params, make_intrinsic, adjust_intrinsic, init_weights
 #from projection import ProjectionHelper
 from datasets.scannet.utils_3d import ProjectionHelper
+from metric.iou import IoU
 
 seed_value= 1234
 # 1. Set `PYTHONHASHSEED` environment variable at a fixed value
@@ -58,8 +59,8 @@ def train(cfg):
     projector.update_intrinsic(intrinsic)
     
     #model_3d = ConvNeXtUNet(cfg, num_images)
-    model_3d  = ResNeXtUNet(cfg, num_images)
-    #model_3d  = SurfaceNet(cfg, num_images)
+    #model_3d  = ResNeXtUNet(cfg, num_images)
+    model_3d  = SurfaceNet(cfg, num_images)
     #model_3d  = Dense3DNetwork(cfg, num_images)
     print_params(model_3d)
     model_3d.to(device)
@@ -71,7 +72,8 @@ def train(cfg):
     #loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([44.5], device = 'cuda'))
     criterion = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100)
     #loss = FixedCrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100, label_smoothing= 0.1)
-
+    if cfg["trainer"]["add_figure_tensorboard"]: 
+        assert cfg["model_2d"]["proxy_loss"], "add_figure_tensorboard is True but proxy_loss is False"
     if cfg["model_2d"]["proxy_loss"]: 
         assert cfg["use_2d_feat_input"], "proxy_loss is True but use_2d_feat_input is False"
     if cfg["use_2d_feat_input"]: 
@@ -97,8 +99,9 @@ def train(cfg):
         model_2d = None
         optimizer2d = None
         criterion2d = None
+    metric_3d = IoU(num_classes=3, ignore_index=2) # ground truth of 3D grid has 3 values:0, 1, -100. Converting label -100 to 2 we have 3 values: 0,1,2
 
-    trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, model_2d = model_2d, optimizer2d = optimizer2d, criterion2d = criterion2d)
+    trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, metric_3d, model_2d = model_2d, optimizer2d = optimizer2d, criterion2d = criterion2d)
     trainer.train()
     
 def test(cfg): 
