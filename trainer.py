@@ -55,7 +55,7 @@ class Trainer3DReconstruction(BaseTrainer):
         self.optimizer.zero_grad()
         if self.cfg["use_2d_feat_input"]:
             self.optimizer2d.zero_grad()
-
+        count_jump_flag_train = 0
         for batch_idx, batch in enumerate(self.train_loader, 0):
             blobs = batch.data
             self.model.train()
@@ -68,19 +68,20 @@ class Trainer3DReconstruction(BaseTrainer):
             jump_flag = self._voxel_pixel_association(blobs)
             if jump_flag:
                 print('error in train batch, skipping the current batch...') 
+                count_jump_flag_train +=1
                 continue
-            temp1, temp2, tensorboard_preds= self._train_step(blobs, batch_idx)
+            temp1, temp2, tensorboard_preds= self._train_step(blobs, batch_idx - count_jump_flag_train)
             loss += temp1
             if self.proxy_loss: 
                 loss2d += temp2
-            if (batch_idx+1) % self.accum_step == 0: 
+            if (batch_idx - count_jump_flag_train +1) % self.accum_step == 0: 
                 train_loss.update(loss, batch_size*self.accum_step)
                 loss = 0.0
                 if self.proxy_loss: 
                     train_loss2d.update(loss2d, self.num_images*batch_size*self.accum_step)
                     loss2d =0.0
                 
-            if self.log_nth and (batch_idx+1) % (self.log_nth * self.accum_step)== 0 : 
+            if self.log_nth and (batch_idx  -count_jump_flag_train +1) % (self.log_nth * self.accum_step)== 0 : 
                 if self.single_sample: 
                     self.writer.add_scalar('train_loss', train_loss.val, global_step= len(self.train_loader)*epoch + batch_idx )
                 print('[Iteration %d/%d] TRAIN loss: %.3f(%.3f)' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, train_loss.val, train_loss.avg))
@@ -92,11 +93,12 @@ class Trainer3DReconstruction(BaseTrainer):
                     self.model.eval()
                     if self.cfg['use_2d_feat_input']: 
                         self.model_2d.eval()
+                    val_loss = 0.0
+                    if self.proxy_loss: 
+                        val_loss2d = 0.0
+                    j = 0
                     with torch.no_grad(): 
-                        val_loss = 0.0
-                        if self.proxy_loss: 
-                            val_loss2d = 0.0
-                        for j in range(self.accum_step): 
+                        while j < self.accum_step:  
                             try: 
                                 blobs = next(val_iterator).data
                             except StopIteration: 
@@ -110,6 +112,7 @@ class Trainer3DReconstruction(BaseTrainer):
                             val_loss += temp1
                             if self.proxy_loss: 
                                 val_loss2d += temp2
+                            j = j+1
                     #self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
                     self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = len(self.train_loader)*epoch + batch_idx)
                     print('[Iteration %d/%d] VAL loss: %.3f' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, val_loss))
@@ -119,7 +122,7 @@ class Trainer3DReconstruction(BaseTrainer):
                         if self.add_figure_tensorboard: 
                             self.writer.add_figure('val predictions vs targets', plot_preds(blobs['nearest_images']['images'][0]*self.std+self.mean, blobs['nearest_images']['label_images'][0], tensorboard_preds), global_step = len(self.train_loader)*epoch + batch_idx)
 
-            if self.val_check_interval and (batch_idx+1) % (self.val_check_interval*self.accum_step) == 0: 
+            if self.val_check_interval and (batch_idx - count_jump_flag_train+1) % (self.val_check_interval*self.accum_step) == 0: 
                 if not self.single_sample: 
                     num_val_epoch = epoch*(len(self.train_loader)// self.val_check_interval) + batch_idx//self.val_check_interval +1
                     if self.proxy_loss: 
