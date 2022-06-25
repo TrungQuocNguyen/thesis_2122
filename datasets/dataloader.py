@@ -45,7 +45,7 @@ class DataCollator(object):
         }
     def pin_memory(self):
         self.data['data']  = self.data['data'].pin_memory()
-        self.data['label']  = self.data['label'].pin_memory() if self.cfg['return_label'] else None
+        self.data['label']  = self.data['label'].pin_memory() if self.cfg['return_label_grid'] else None
         self.data['nearest_images']['images'] = [x.pin_memory() for x in self.data['nearest_images']['images']]
         self.data['nearest_images']['depths'] = [x.pin_memory() for x in self.data['nearest_images']['depths']]
         self.data['nearest_images']['poses'] = [x.pin_memory() for x in self.data['nearest_images']['poses']]
