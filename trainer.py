@@ -45,10 +45,10 @@ class Trainer3DReconstruction(BaseTrainer):
 
     def _train_epoch(self, epoch): 
         train_loss = AverageMeter()
-        loss = 0.0
+        loss_sum = 0.0
         if self.proxy_loss: 
             train_loss2d = AverageMeter()
-            loss2d = 0.0
+            loss2d_sum = 0.0
 
         val_iterator = iter(self.val_loader)
 
@@ -60,9 +60,10 @@ class Trainer3DReconstruction(BaseTrainer):
             blobs = batch.data
             self.model.train()
             if self.cfg['use_2d_feat_input']: 
-                for layer_idx, layer in enumerate(self.model_2d.children()): 
-                    if layer_idx >=15: 
-                        layer.train()
+            #    for layer_idx, layer in enumerate(self.model_2d.children()): 
+            #        if layer_idx >=15: 
+            #            layer.train()
+                self.model_2d.eval()
             #blobs['data']: [N, 32, 32, 64] N: batch_size
             batch_size = blobs['data'].shape[0]
             jump_flag = self._voxel_pixel_association(blobs)
@@ -70,20 +71,22 @@ class Trainer3DReconstruction(BaseTrainer):
                 print('error in train batch, skipping the current batch...') 
                 count_jump_flag_train +=1
                 continue
-            temp1, temp2, tensorboard_preds= self._train_step(blobs, batch_idx - count_jump_flag_train)
-            loss += temp1
+            loss, loss2d, tensorboard_preds= self._train_step(blobs, batch_idx - count_jump_flag_train)
+            loss_sum += loss
             if self.proxy_loss: 
-                loss2d += temp2
+                loss2d_sum += loss2d
             if (batch_idx - count_jump_flag_train +1) % self.accum_step == 0: 
-                train_loss.update(loss, batch_size*self.accum_step)
-                loss = 0.0
+                train_loss.update(loss_sum, batch_size*self.accum_step)
+                loss_sum = 0.0
                 if self.proxy_loss: 
-                    train_loss2d.update(loss2d, self.num_images*batch_size*self.accum_step)
-                    loss2d =0.0
+                    train_loss2d.update(loss2d_sum, self.num_images*batch_size*self.accum_step)
+                    loss2d_sum =0.0
                 
             if self.log_nth and (batch_idx  -count_jump_flag_train +1) % (self.log_nth * self.accum_step)== 0 : 
                 if self.single_sample: 
                     self.writer.add_scalar('train_loss', train_loss.val, global_step= len(self.train_loader)*epoch + batch_idx )
+                    if self.proxy_loss: 
+                        self.writer.add_scalar('train_loss2d', train_loss2d.val, global_step= len(self.train_loader)*epoch + batch_idx )
                 print('[Iteration %d/%d] TRAIN loss: %.3f(%.3f)' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, train_loss.val, train_loss.avg))
                 if self.proxy_loss: 
                     print('[Iteration %d/%d] TRAIN loss2d: %.3f(%.3f)' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, train_loss2d.val, train_loss2d.avg))
@@ -148,10 +151,8 @@ class Trainer3DReconstruction(BaseTrainer):
                 }, is_best, self.checkpoint_2d_optimizer, self.best_2d_optimizer)
                 
                 val_epoch_loss = loss 
-                loss = 0.0
                 if self.proxy_loss: 
                     val_epoch_loss2d = loss2d 
-                    loss2d = 0.0
         # comment this block when overfitting with 10 train and 4 val    
         if self.log_nth and not self.single_sample: 
             print('[Epoch %d/%d] TRAIN loss: %.3f' %(epoch+1, self.epochs, train_loss.avg))
