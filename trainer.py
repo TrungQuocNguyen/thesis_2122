@@ -211,6 +211,7 @@ class Trainer3DReconstruction(BaseTrainer):
         if self.cfg['use_2d_feat_input']: 
             self.model_2d.eval()
         self.metric_3d.reset()
+        count_jump_flag_val = 0
         with torch.no_grad(): 
             for i,sample in enumerate(self.val_loader):
                 blobs = sample.data
@@ -218,12 +219,13 @@ class Trainer3DReconstruction(BaseTrainer):
                 jump_flag = self._voxel_pixel_association(blobs)
                 if jump_flag:
                     print('error in validation batch, skipping the current batch...')
+                    count_jump_flag_val +=1
                     continue
                 temp1, temp2, _= self._eval_step(blobs, True)
                 loss+= temp1
                 if self.proxy_loss: 
                     loss2d += temp2
-                if (i+1) % self.accum_step == 0: 
+                if (i - count_jump_flag_val +1) % self.accum_step == 0: 
                     val_loss.update(loss, batch_size*self.accum_step)
                     loss = 0.0
                     if self.proxy_loss: 
