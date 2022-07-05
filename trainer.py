@@ -100,6 +100,7 @@ class Trainer3DReconstruction(BaseTrainer):
                     if self.proxy_loss: 
                         val_loss2d = 0.0
                     j = 0
+                    self.metric_3d.reset()
                     with torch.no_grad(): 
                         while j < self.accum_step:  
                             try: 
@@ -111,12 +112,14 @@ class Trainer3DReconstruction(BaseTrainer):
                             if jump_flag: 
                                 print('error in single validation batch, skipping the current batch...')
                                 continue
-                            temp1, temp2, tensorboard_preds= self._eval_step(blobs, False)
+                            temp1, temp2, tensorboard_preds= self._eval_step(blobs, True)
                             val_loss += temp1
                             if self.proxy_loss: 
                                 val_loss2d += temp2
                             j = j+1
+                        iou, _ = self.metric_3d.value()
                     #self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
+                    self.writer.add_scalar('step_IoU', iou[1], global_step= len(self.train_loader)*epoch + batch_idx )
                     self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = len(self.train_loader)*epoch + batch_idx)
                     print('[Iteration %d/%d] VAL loss: %.3f' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, val_loss))
                     if self.proxy_loss: 
