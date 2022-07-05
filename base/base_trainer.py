@@ -25,7 +25,7 @@ class BaseTrainer:
         if self.resume_training:
             checkpoint_path = cfg["trainer"]["load_path"]
             assert os.path.isfile(checkpoint_path), "No checkpoint found at {}".format(checkpoint_path)
-            print("Loading checkpoint of 3D network'{}'".format(checkpoint_path))
+            print("Loading checkpoint of network'{}'".format(checkpoint_path))
             self.checkpoint = torch.load(checkpoint_path)
             self.start_epoch = self.checkpoint["epoch"]
             self.model.load_state_dict(self.checkpoint["state_dict"])
