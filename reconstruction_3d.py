@@ -59,18 +59,18 @@ def train(cfg):
     projector.update_intrinsic(intrinsic)
     
     #model_3d = ConvNeXtUNet(cfg, num_images)
-    #model_3d  = ResNeXtUNet(cfg, num_images)
-    model_3d  = SurfaceNet(cfg, num_images)
+    model_3d  = ResNeXtUNet(cfg, num_images)
+    #model_3d  = SurfaceNet(cfg, num_images)
     #model_3d  = Dense3DNetwork(cfg, num_images)
     print_params(model_3d)
     model_3d.to(device)
 
     optimizer = optim.RAdam(model_3d.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
     #optimizer = optim.AdamW(model.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
-    #optimizer = optim.SGD(model.parameters(), lr  = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"], momentum = 0, nesterov= False)
+    #optimizer = optim.SGD(model_3d.parameters(), lr  = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"], momentum = 0.9, nesterov= False)
 
     #loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([44.5], device = 'cuda'))
-    criterion = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100)
+    criterion = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 8.0], device = 'cuda'), ignore_index = -100)
     #loss = FixedCrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100, label_smoothing= 0.1)
     if cfg["trainer"]["add_figure_tensorboard"]: 
         assert cfg["model_2d"]["proxy_loss"], "add_figure_tensorboard is True but proxy_loss is False"
@@ -91,6 +91,7 @@ def train(cfg):
         model_2d.to(device)
         model_2d.eval() # set all layer to evaluation mode, and later set trainable layer to train mode 
         optimizer2d = optim.RAdam(model_2d.parameters(), lr = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"])
+        #optimizer2d = optim.SGD(model_2d.parameters(), lr  = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"], momentum = 0, nesterov= False)
         if cfg["model_2d"]["proxy_loss"]: 
             criterion2d = nn.CrossEntropyLoss(ignore_index = cfg["model_2d"]["ignore_index"])
         else: 
