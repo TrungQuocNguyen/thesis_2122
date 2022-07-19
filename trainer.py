@@ -6,7 +6,8 @@ import torch.nn as nn
 from utils.helpers import plot_preds
 class Trainer3DReconstruction(BaseTrainer): 
     def __init__(self, cfg, model, loss, train_loader, val_loader, projector, optimizer, device, metric_3d,  **kwargs): 
-        super(Trainer3DReconstruction, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device, metric_3d)
+        super(Trainer3DReconstruction, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
+        self.metric_3d = metric_3d
         self.proxy_loss = cfg["model_2d"]["proxy_loss"]
         if cfg["use_2d_feat_input"]:
 
@@ -350,7 +351,7 @@ class TrainerENet(BaseTrainer):
         imgs = imgs.to(self.device) # (N, 3, H,W)
         targets = targets.to(self.device) # (N, H, W)
         self.optimizer.zero_grad()
-        _, outputs = self.model(imgs) # (N, C, H, W)
+        outputs = self.model(imgs) # (N, C, H, W)
         loss = self.criterion(outputs, targets)
         loss.backward()
         self.optimizer.step()
@@ -377,7 +378,7 @@ class TrainerENet(BaseTrainer):
         imgs = imgs.to(self.device)
         targets = targets.to(self.device) # [N, H, W]
 
-        _, outputs = self.model(imgs) # (N, C, H, W)
+        outputs = self.model(imgs) # (N, C, H, W)
         loss = self.criterion(outputs, targets)
 
 

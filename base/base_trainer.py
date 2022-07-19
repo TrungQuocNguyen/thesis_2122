@@ -7,7 +7,7 @@ import torch
 import shutil
 from torch.utils.tensorboard import SummaryWriter
 class BaseTrainer: 
-    def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, device, metric_3d):
+    def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, device):
         self.cfg = cfg
         self.model = model
         self.criterion = loss
@@ -15,7 +15,6 @@ class BaseTrainer:
         self.val_loader = val_loader
         self.optimizer = optimizer
         self.device = device
-        self.metric_3d = metric_3d
         self.epochs = cfg["trainer"]["epochs"]
         self.log_nth = cfg["trainer"]["log_nth"]
         self.single_sample = cfg["trainer"]["single_sample"]
