@@ -35,8 +35,9 @@ def main(config):
 
     optimizer = optim.Adam(model.parameters(), lr = config["optimizer"]["learning_rate"], weight_decay= config["optimizer"]["weight_decay"])
     metric = IoU(num_classes=config["models"]["num_classes"], ignore_index=config["IoU_ignore_index"])
+    metric_all_classes = IoU(num_classes=config["models"]["num_classes"], ignore_index= config["ignore_index"])
 
-    trainer = TrainerENet(config, model, loss, train_loader, val_loader, optimizer, metric, device)
+    trainer = TrainerENet(config, model, loss, train_loader, val_loader, optimizer, metric, metric_all_classes, device)
     trainer.train()
 
 

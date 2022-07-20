@@ -296,10 +296,11 @@ class Trainer3DReconstruction(BaseTrainer):
 
 
 class TrainerENet(BaseTrainer): 
-    def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, metric, device):
+    def __init__(self, cfg, model, loss, train_loader, val_loader, optimizer, metric, metric_all_classes, device):
         super(TrainerENet, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
         self.add_figure_tensorboard = cfg["trainer"]["add_figure_tensorboard"]
         self.metric = metric
+        self.metric_all_classes = metric_all_classes
         self.best_miou = 0
         if self.resume_training:
             self.best_miou = self.checkpoint["best_miou"]
@@ -332,6 +333,8 @@ class TrainerENet(BaseTrainer):
                     self.writer.add_figure('train predictions vs targets', plot_preds(imgs*std+mean, targets, preds), global_step = len(self.train_loader)*epoch + i)
                 if not self.single_sample: 
                     self.model.eval()
+                    self.metric.reset()
+                    self.metric_all_classes.reset()
                     with torch.no_grad():
                         try: 
                             imgs, targets = next(val_iterator)
@@ -339,7 +342,11 @@ class TrainerENet(BaseTrainer):
                             val_iterator = iter(self.val_loader)
                             imgs, targets = next(val_iterator)
                         
-                        val_loss, val_preds = self._eval_step(imgs, targets, False)
+                        val_loss, val_preds = self._eval_step(imgs, targets, True)
+                    _, miou = self.metric.value()
+                    _, miou_all_classes = self.metric_all_classes.value()
+                    self.writer.add_scalar('val_mIoU', miou, global_step= len(self.train_loader)*epoch + i )
+                    self.writer.add_scalar('val_mIoU_all_classes', miou_all_classes, global_step= len(self.train_loader)*epoch + i )
                     self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
                     print('[Iteration %d/%d] VAL loss: %.3f   ' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, val_loss))
                     if self.add_figure_tensorboard: 
@@ -364,15 +371,18 @@ class TrainerENet(BaseTrainer):
         val_loss = AverageMeter()
         self.model.eval()
         self.metric.reset()
+        self.metric_all_classes.reset()
         with torch.no_grad(): 
             for (imgs, targets) in self.val_loader: 
                loss, _= self._eval_step(imgs, targets, True)
                val_loss.update(loss, imgs.size(0))
-        iou, miou = self.metric.value()
+        _, miou = self.metric.value()
+        _, miou_all_classes = self.metric_all_classes.value()
         if self.log_nth: 
             self.writer.add_scalar('val_epoch_loss', val_loss.avg, global_step= epoch)
             self.writer.add_scalar('val_epoch_mIoU', miou, global_step= epoch)
-            print('[Epoch %d/%d] VAL loss: %.3f           mIoU: %.3f' %(epoch+1, self.epochs, val_loss.avg, miou))
+            self.writer.add_scalar('val_epoch_mIoU_all_classes', miou_all_classes, global_step= epoch)
+            print('[Epoch %d/%d] VAL loss: %.3f           mIoU: %.3f           mIoU_all_classes: %.3f' %(epoch+1, self.epochs, val_loss.avg, miou, miou_all_classes))
         return miou
     def _eval_step(self, imgs, targets, is_validating): 
         imgs = imgs.to(self.device)
@@ -384,7 +394,10 @@ class TrainerENet(BaseTrainer):
 
         _, preds = torch.max(outputs, 1) # [N, H, W]
         if is_validating: 
-            self.metric.add(preds.detach(), targets.detach())
+            pred_ = preds.detach()
+            target_ = targets.detach()
+            self.metric.add(pred_, target_)
+            self.metric_all_classes.add(pred_, target_)
         
         return loss.item(), preds.cpu().detach()
 class AverageMeter(object): 
