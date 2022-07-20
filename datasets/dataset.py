@@ -3,7 +3,7 @@ import math
 import numpy as np 
 import torch
 from torch.utils.data import Dataset
-from torchvision import transforms
+from torchvision import transforms as T
 from PIL import Image
 from torchvision.transforms.functional import InterpolationMode
 import torchvision.transforms.functional as tf
@@ -22,20 +22,21 @@ class ScanNet2D(Dataset):
         self.augmentation = cfg["augmentation"]
         self.mean = cfg["mean"]
         self.std = cfg["std"]
+        self.transform = T.Compose([T.ColorJitter(brightness= 0.3, contrast= 0.3, saturation= 0.3, hue= 0.3), 
+                                    T.GaussianBlur(kernel_size=(3,7), sigma = (0, 0.3))])
     def __len__(self): 
         return len(self.img_list)
     def __getitem__(self, idx): 
         if torch.is_tensor(idx):
             idx = idx.tolist()
             
-        random_vflip = random.random()
         random_hflip = random.random()
 
         img_name = os.path.join(self.img_dir, self.img_list[idx])
-        image = self.load_image(img_name, self.img_size, (random_vflip, random_hflip))
+        image = self.load_image(img_name, self.img_size, random_hflip)
 
         label_name = os.path.join(self.label_dir, self.label_list[idx])
-        target = self.load_image(label_name, self.label_img_size, (random_vflip, random_hflip))
+        target = self.load_image(label_name, self.label_img_size, random_hflip)
 
         return image, target
     def resize_crop_image(self, image, new_image_dims):
@@ -45,8 +46,8 @@ class ScanNet2D(Dataset):
         if image_dims == new_image_dims:
             return image
         resize_width = int(math.floor(new_image_dims[1] * float(image_dims[0]) / float(image_dims[1])))
-        image = transforms.Resize([new_image_dims[1], resize_width], interpolation=InterpolationMode.NEAREST)(Image.fromarray(image))
-        image = transforms.CenterCrop([new_image_dims[1], new_image_dims[0]])(image)
+        image = T.Resize([new_image_dims[1], resize_width], interpolation=InterpolationMode.NEAREST)(Image.fromarray(image))
+        image = T.CenterCrop([new_image_dims[1], new_image_dims[0]])(image)
         return image # [256, 328,3] or [256, 328] if turn to np.array
     def load_image(self, file, image_dims, random_set):
         image = np.array(Image.open(file)) # [240, 320]
@@ -54,16 +55,16 @@ class ScanNet2D(Dataset):
         image = self.resize_crop_image(image, image_dims) # (256, 328,3)
 
         if self.augmentation: 
-            if random_set[0] > 0.5: 
-                image = tf.vflip(image)
 
-            if random_set[1] > 0.5: 
+            if random_set > 0.5: 
                 image = tf.hflip(image)
+            if len(image.shape) ==3: 
+                image = self.transform(image)
 
         image = np.array(image)
         if len(image.shape) == 3: # color image
             image =  np.transpose(image, [2, 0, 1])  # move feature to front
-            image = transforms.Normalize(mean=self.mean, std=self.std)(torch.Tensor(image.astype(np.float32) / 255.0))
+            image = T.Normalize(mean=self.mean, std=self.std)(torch.Tensor(image.astype(np.float32) / 255.0))
     
         elif len(image.shape) == 2: # label image
             image = torch.from_numpy(image.astype(np.int64))
@@ -149,8 +150,8 @@ class ScanNet2D3D(Dataset):
         if image_dims == new_image_dims:
             return image
         resize_width = int(math.floor(new_image_dims[1] * float(image_dims[0]) / float(image_dims[1])))
-        image = transforms.Resize([new_image_dims[1], resize_width], interpolation=InterpolationMode.NEAREST)(Image.fromarray(image))
-        image = transforms.CenterCrop([new_image_dims[1], new_image_dims[0]])(image)
+        image = T.Resize([new_image_dims[1], resize_width], interpolation=InterpolationMode.NEAREST)(Image.fromarray(image))
+        image = T.CenterCrop([new_image_dims[1], new_image_dims[0]])(image)
         image = np.array(image) # [256, 328]
         return image
 
@@ -168,7 +169,7 @@ class ScanNet2D3D(Dataset):
         image = self.resize_crop_image(image, image_dims) # (256, 328,3)
         if len(image.shape) == 3: # color image
             image =  np.transpose(image, [2, 0, 1])  # move feature to front
-            image = transforms.Normalize(mean=self.cfg["color_mean"], std=self.cfg["color_std"])(torch.Tensor(image.astype(np.float32) / 255.0))
+            image = T.Normalize(mean=self.cfg["color_mean"], std=self.cfg["color_std"])(torch.Tensor(image.astype(np.float32) / 255.0))
         elif len(image.shape) == 2: # label image
             image = torch.from_numpy(image.astype(np.int64))
         else:
