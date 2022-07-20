@@ -23,7 +23,7 @@ class ScanNet2D(Dataset):
         self.mean = cfg["mean"]
         self.std = cfg["std"]
         self.transform = T.Compose([T.ColorJitter(brightness= 0.3, contrast= 0.3, saturation= 0.3, hue= 0.3), 
-                                    T.GaussianBlur(kernel_size=(3,7), sigma = (0, 0.3))])
+                                    T.GaussianBlur(kernel_size=(3,7), sigma = (0.1, 4))])
     def __len__(self): 
         return len(self.img_list)
     def __getitem__(self, idx): 
@@ -58,7 +58,7 @@ class ScanNet2D(Dataset):
 
             if random_set > 0.5: 
                 image = tf.hflip(image)
-            if len(image.shape) ==3: 
+            if image.mode == 'RGB': 
                 image = self.transform(image)
 
         image = np.array(image)

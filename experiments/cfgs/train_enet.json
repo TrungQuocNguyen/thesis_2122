@@ -12,7 +12,7 @@
         "label_img_size": [41, 32],
         "mean": [0.496342, 0.466664, 0.440796], 
         "std": [0.277856, 0.28623, 0.291129], 
-        "augmentation": false, 
+        "augmentation": true, 
         "batch_size": 64,
         "shuffle": true, 
         "num_workers": 8
@@ -31,7 +31,7 @@
     }, 
     "trainer": {
         "epochs": 1500,
-        "log_nth": 10,
+        "log_nth": 1,
         "single_sample" : false, 
         "add_figure_tensorboard": true,  
         "load_path": "", 
