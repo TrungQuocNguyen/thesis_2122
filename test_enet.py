@@ -4,7 +4,7 @@ import os
 import torch
 from datasets import ScanNet2D
 from torch.utils.data import DataLoader
-from models import ENet
+from models import ENet, create_enet
 import numpy as np 
 from metric.iou import IoU
 from utils.helpers import CLASS_LABELS
@@ -18,8 +18,9 @@ def main(config):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
     testset = ScanNet2D(config["test_loader"])
     test_loader = DataLoader(testset, batch_size = config["test_loader"]["batch_size"],shuffle = config["test_loader"]["shuffle"], num_workers = config["test_loader"]["num_workers"], pin_memory= True)
-    model = ENet(config["models"])
-
+    #model = ENet(config["models"])
+    
+    model = create_enet(config["models"]["num_classes"])
     checkpoint = torch.load(config["models"]["load_path"])
     print("epoch %d: "%(checkpoint["epoch"]))
     model.load_state_dict(checkpoint["state_dict"])
