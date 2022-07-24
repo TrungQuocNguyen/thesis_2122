@@ -9,6 +9,7 @@ class Trainer3DReconstruction(BaseTrainer):
         super(Trainer3DReconstruction, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
         self.metric_3d = metric_3d
         self.proxy_loss = cfg["model_2d"]["proxy_loss"]
+        self.plot_gradient = cfg["trainer"]["plot_gradient"]
         if cfg["use_2d_feat_input"]:
 
             self.checkpoint_2d_model = os.path.join(self.model_folder, 'checkpoint_2d_model.pth.tar')
@@ -202,9 +203,15 @@ class Trainer3DReconstruction(BaseTrainer):
             (loss + loss2d).backward()
 
         if (batch_idx+1) % self.accum_step == 0: 
+            if self.plot_gradient: 
+                self.plot_grad_flow('model_3d', self.model.named_parameters(), batch_idx)
             self.optimizer.step()
             self.optimizer.zero_grad()
             if self.cfg['use_2d_feat_input']: 
+                if self.plot_gradient: 
+                    self.plot_grad_flow('model_2d_trainable', self.model_2d_trainable.named_parameters(), batch_idx)
+                    if self.proxy_loss: 
+                        self.plot_grad_flow('model_2d_classification', self.model_2d_classification.named_parameters(), batch_idx)
                 self.optimizer2d.step()
                 self.optimizer2d.zero_grad() # optimizer call with and without proxy loss is the same 
         return loss.item(), loss2d.item(), tensorboard_preds

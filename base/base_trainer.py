@@ -37,16 +37,16 @@ class BaseTrainer:
 
         if cfg["trainer"]["training_type"] == "3D": 
             if cfg["use_2d_feat_input"]: 
-                base_path = "3d_recon_2dfeat_input"
+                self.base_path = "3d_recon_2dfeat_input"
             else: 
-                base_path = "3d_recon_RGB_input"
+                self.base_path = "3d_recon_RGB_input"
         elif cfg["trainer"]["training_type"] == "2D":
-            base_path = "enet"
+            self.base_path = "enet"
         else: 
             raise ValueError("training_type is unknown")
 
-        self.writer = SummaryWriter(os.path.join("saved/runs", base_path, self.dir_name))
-        self.model_folder = os.path.join("saved/models", base_path, self.dir_name)
+        self.writer = SummaryWriter(os.path.join("saved/runs", self.base_path, self.dir_name))
+        self.model_folder = os.path.join("saved/models", self.base_path, self.dir_name)
         if not os.path.exists(self.model_folder): 
             os.makedirs(self.model_folder)
         self.checkpoint_path =  os.path.join(self.model_folder, 'checkpoint.pth.tar')
@@ -68,7 +68,7 @@ class BaseTrainer:
         if is_best:
             print("Saving best model path")
             shutil.copyfile(checkpoint_path, best_model_path)
-    def plot_grad_flow(self,named_parameters, epoch):
+    def plot_grad_flow(self,model_name, named_parameters, step):
         '''Plots the gradients flowing through different layers in the net during training.
         Can be used for checking for possible gradient vanishing / exploding problems.
     
@@ -95,7 +95,7 @@ class BaseTrainer:
         ax.set_xticklabels(layers, rotation="vertical")
 
         ax.set_xlim(left=0, right=len(ave_grads))
-        ax.set_ylim(bottom = -0.001, top=0.02) # zoom in on the lower gradient regions
+        ax.set_ylim(bottom = -0.001, top=0.002) # zoom in on the lower gradient regions
         ax.set_xlabel("Layers")
         ax.set_ylabel("average gradient")
         ax.set_title("Gradient flow")
@@ -104,9 +104,9 @@ class BaseTrainer:
                     Line2D([0], [0], color="b", lw=4),
                     Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
         figure.tight_layout()
-        plot_dir = os.path.join('saved/plot_gradient', self.dir_name)
+        plot_dir = os.path.join('saved/plot_gradient', self.base_path, self.dir_name)
         if not os.path.exists(plot_dir):
             os.makedirs(plot_dir)
-        plot_path = os.path.join(plot_dir, 'gradient_'+'epoch_' + str(epoch+1) + '.png')
+        plot_path = os.path.join(plot_dir, model_name + 'gradient_'+'step_' + str(step+1) + '.png')
         figure.savefig(plot_path)
         plt.close(figure)
