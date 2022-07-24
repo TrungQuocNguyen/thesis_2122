@@ -582,15 +582,15 @@ def create_enet(num_classes):
     return enet
 
 
-def create_enet_for_3d(type, model_path, num_3d_classes):
-    num_classes = type[0]
-    model = create_enet(num_classes)
-    model.load_state_dict(torch.load(model_path))
+def create_enet_for_3d(num_2d_classes, model_path):
+    model = create_enet(num_2d_classes)
+    model.load_state_dict(torch.load(model_path)["state_dict"])
     # remove the classifier
     n = len(model)
     model_trainable = nn.Sequential(*(model[i] for i in range(n-9, n-1))) 
     model_fixed = nn.Sequential(*(model[i] for i in range(n-9))) 
-    model_classifier = nn.Sequential(nn.Conv2d(128, num_3d_classes, (1, 1), (1, 1), (0, 0), (1, 1), 1, bias=False))
+    #model_classifier = nn.Sequential(nn.Conv2d(128, num_3d_classes, (1, 1), (1, 1), (0, 0), (1, 1), 1, bias=False))
+    model_classifier = nn.Sequential(model[n-1])
     for param in model_fixed.parameters():
         param.requires_grad = False
     return model_fixed, model_trainable, model_classifier

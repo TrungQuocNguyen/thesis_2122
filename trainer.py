@@ -17,7 +17,9 @@ class Trainer3DReconstruction(BaseTrainer):
             self.best_2d_optimizer = os.path.join(self.model_folder, 'optimizer_2d_best.pth.tar')
 
             print("Using 2D features from ENet as input")
-            self.model_2d = kwargs["model_2d"]
+            self.model_2d_fixed = kwargs["model_2d_fixed"]
+            self.model_2d_trainable = kwargs["model_2d_trainable"]
+            self.model_2d_classification = kwargs["model_2d_classification"]
             self.optimizer2d = kwargs["optimizer2d"]
             if self.proxy_loss: 
                 print("Using proxy loss for 2D features")
@@ -61,10 +63,9 @@ class Trainer3DReconstruction(BaseTrainer):
             blobs = batch.data
             self.model.train()
             if self.cfg['use_2d_feat_input']: 
-            #    for layer_idx, layer in enumerate(self.model_2d.children()): 
-            #        if layer_idx >=15: 
-            #            layer.train()
-                self.model_2d.eval()
+                self.model_2d_trainable.train()
+                if self.proxy_loss: 
+                    self.model_2d_classification.train()
             #blobs['data']: [N, 32, 32, 64] N: batch_size
             batch_size = blobs['data'].shape[0]
             jump_flag = self._voxel_pixel_association(blobs)
@@ -96,7 +97,9 @@ class Trainer3DReconstruction(BaseTrainer):
                 if not self.single_sample: 
                     self.model.eval()
                     if self.cfg['use_2d_feat_input']: 
-                        self.model_2d.eval()
+                        self.model_2d_trainable.eval()
+                        if self.proxy_loss: 
+                            self.model_2d_classification.eval()
                     val_loss = 0.0
                     if self.proxy_loss: 
                         val_loss2d = 0.0
@@ -147,7 +150,7 @@ class Trainer3DReconstruction(BaseTrainer):
                 }, is_best, self.checkpoint_path, self.best_model_path)
                 if self.cfg['use_2d_feat_input']: 
                     self.save_checkpoint({
-                        'state_dict': self.model_2d.state_dict()
+                        'state_dict': nn.Sequential(*(list(self.model_2d_fixed) + list(self.model_2d_trainable) + list(self.model_2d_classification))).state_dict()
                     }, is_best, self.checkpoint_2d_model, self.best_2d_model_path)
 
                     self.save_checkpoint({
@@ -177,9 +180,11 @@ class Trainer3DReconstruction(BaseTrainer):
         if self.cfg['use_2d_feat_input']: 
             blobs['feat_2d'] =  []
             for i in range(batch_size):
-                imageft, mask = self.model_2d(blobs['nearest_images']['images'][i].to(self.device)) # feat: [max_num_images, 128, 32, 41], mask: [max_num_images, 41, 256, 328]
+                imageft = self.model_2d_fixed(blobs['nearest_images']['images'][i].to(self.device)) # feat: [max_num_images, 128, 32, 41], mask: [max_num_images, 41, 256, 328]
+                imageft = self.model_2d_trainable(imageft)
                 blobs['feat_2d'].append(imageft) # list of tensor, each tensor size [max_num_images, 128, depth_shape[1], depth_shape[0]]
                 if self.proxy_loss: 
+                    mask = self.model_2d_classification(imageft)
                     predicted_images.append(mask)
                     target_images.append(blobs['nearest_images']['label_images'][i])
                     if i == 0 and self.add_figure_tensorboard: # take only the first sample in the batch for visualization
@@ -213,7 +218,9 @@ class Trainer3DReconstruction(BaseTrainer):
             val_loss2d = AverageMeter()
         self.model.eval()
         if self.cfg['use_2d_feat_input']: 
-            self.model_2d.eval()
+            self.model_2d_trainable.eval()
+            if self.proxy_loss: 
+                self.model_2d_classification.eval()
         self.metric_3d.reset()
         count_jump_flag_val = 0
         with torch.no_grad(): 
@@ -258,9 +265,11 @@ class Trainer3DReconstruction(BaseTrainer):
         if self.cfg['use_2d_feat_input']: 
             blobs['feat_2d'] =  []
             for i in range(batch_size):
-                imageft, mask = self.model_2d(blobs['nearest_images']['images'][i].to(self.device)) # feat: [max_num_images, 128, 32, 41], mask: [max_num_images, 41, 256, 328]
+                imageft= self.model_2d_fixed(blobs['nearest_images']['images'][i].to(self.device)) # feat: [max_num_images, 128, 32, 41], mask: [max_num_images, 41, 256, 328]
+                imageft = self.model_2d_trainable(imageft)
                 blobs['feat_2d'].append(imageft) # list of tensor, each tensor size [max_num_images, 128, depth_shape[1], depth_shape[0]]
                 if self.proxy_loss: 
+                    mask = self.model_2d_classification(imageft)
                     predicted_images.append(mask)
                     target_images.append(blobs['nearest_images']['label_images'][i])
                     if i == 0 and self.add_figure_tensorboard: #take only the first sample in the batch for visualization

@@ -9,10 +9,10 @@ from torch import Tensor
 from torch.nn import CrossEntropyLoss
 import torch.optim as optim
 from models import Dense3DNetwork, SurfaceNet, ResUNet, ResNeXtUNet, ConvNeXtUNet
-from models import ENet
+from models import ENet, create_enet_for_3d
 from datasets import ScanNet2D3D, get_dataloader
 from trainer import Trainer3DReconstruction
-from utils.helpers import print_params, make_intrinsic, adjust_intrinsic, init_weights
+from utils.helpers import print_params, make_intrinsic, adjust_intrinsic
 #from projection import ProjectionHelper
 from datasets.scannet.utils_3d import ProjectionHelper
 from metric.iou import IoU
@@ -27,14 +27,20 @@ np.random.seed(seed_value)
 # 4. Set `pytorch` pseudo-random generator at a fixed value
 torch.manual_seed(seed_value)
 
-class FixedCrossEntropyLoss(CrossEntropyLoss):
+SCANNET2D_CLASS_WEIGHTS = [3.5664, 2.9007, 3.1645, 4.5708, 4.7439, 4.4247, 4.9056, 4.5828, 4.6723,
+        5.1634, 5.2238, 5.3857, 5.3079, 5.4757, 5.0380, 5.1324, 5.2344, 5.3254,
+        5.3597, 5.4598, 5.4675, 5.3584, 5.3784, 5.3338, 5.2996, 5.4221, 5.4798,
+        5.4038, 5.3744, 5.3701, 5.3716, 5.4738, 5.4278, 5.3312, 5.3813, 5.4588,
+        5.3192, 5.4527, 5.0615, 4.8410, 4.5946] #  label 0: unanottated, 40: otherprop
+
+class FixedCrossEntropyLoss(nn.CrossEntropyLoss):
     """
     Standard CrossEntropyLoss with label_smoothing doesn't handle ignore_index properly, so we apply
     the mask ourselves. See https://github.com/pytorch/pytorch/issues/73205
     """
-    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor: # input: [N, C, H, W], target: [N, H, W]
         if not target.is_floating_point() and self.ignore_index is not None:
-            input = input.permute(0,2,3,4,1)[target!=self.ignore_index]
+            input = input.permute(0,2,3,1)[target!=self.ignore_index]
             target = target[target != self.ignore_index]
         loss = super().forward(input, target)
         return loss
@@ -65,8 +71,8 @@ def train(cfg):
     print_params(model_3d)
     model_3d.to(device)
 
-    optimizer = optim.RAdam(model_3d.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
-    #optimizer = optim.AdamW(model.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
+    #optimizer = optim.RAdam(model_3d.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
+    optimizer = optim.AdamW(model_3d.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
     #optimizer = optim.SGD(model_3d.parameters(), lr  = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"], momentum = 0.9, nesterov= False)
 
     #loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([44.5], device = 'cuda'))
@@ -77,32 +83,42 @@ def train(cfg):
     if cfg["model_2d"]["proxy_loss"]: 
         assert cfg["use_2d_feat_input"], "proxy_loss is True but use_2d_feat_input is False"
     if cfg["use_2d_feat_input"]: 
-        model_2d = ENet(cfg["model_2d"])
-        checkpoint_2d_path = cfg["model_2d"]["load_path_2d"]
-        assert checkpoint_2d_path, "load_path_2d is empty"
-        assert os.path.isfile(checkpoint_2d_path), "path to 2D model checkpoint does not exist"
-        model_2d_checkpoint = torch.load(checkpoint_2d_path)
-        model_2d.load_state_dict(model_2d_checkpoint["state_dict"])
-        for i, layer in enumerate(model_2d.children()): 
-            if i < 15: 
-                for param in layer.parameters():
-                    param.requires_grad = False
+        #model_2d = ENet(cfg["model_2d"])
+        #checkpoint_2d_path = cfg["model_2d"]["load_path_2d"]
+        #assert checkpoint_2d_path, "load_path_2d is empty"
+        #assert os.path.isfile(checkpoint_2d_path), "path to 2D model checkpoint does not exist"
+        #model_2d_checkpoint = torch.load(checkpoint_2d_path)
+        #model_2d.load_state_dict(model_2d_checkpoint["state_dict"])
+        #for i, layer in enumerate(model_2d.children()): 
+        #    if i < 15: 
+        #        for param in layer.parameters():
+        #            param.requires_grad = False
         
-        model_2d.to(device)
-        model_2d.eval() # set all layer to evaluation mode, and later set trainable layer to train mode 
-        optimizer2d = optim.RAdam(model_2d.parameters(), lr = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"])
+        #model_2d.to(device)
+        #model_2d.eval() # set all layer to evaluation mode, and later set trainable layer to train mode 
+        model_2d_fixed, model_2d_trainable, model_2d_classification = create_enet_for_3d(cfg["model_2d"]["num_classes"], cfg["model_2d"]["load_path_2d"])
+        model_2d_fixed.to(device)
+        model_2d_fixed.eval()
+        model_2d_trainable.to(device)
+        model_2d_classification.to(device)
+
+        optimizer2d = optim.AdamW([{'params': model_2d_trainable.parameters()}, {'params': model_2d_classification.parameters()}], lr = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"])
         #optimizer2d = optim.SGD(model_2d.parameters(), lr  = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"], momentum = 0, nesterov= False)
         if cfg["model_2d"]["proxy_loss"]: 
-            criterion2d = nn.CrossEntropyLoss(ignore_index = cfg["model_2d"]["ignore_index"])
+            criterion_weights = torch.tensor(SCANNET2D_CLASS_WEIGHTS, device = 'cuda')
+            #criterion2d = nn.CrossEntropyLoss(ignore_index = cfg["model_2d"]["ignore_index"])
+            criterion2d = FixedCrossEntropyLoss(weight= criterion_weights, ignore_index = cfg["model_2d"]["ignore_index"], label_smoothing= 0.1)
         else: 
             criterion2d = None
     else: 
-        model_2d = None
+        model_2d_fixed = None
+        model_2d_trainable = None
+        model_2d_classification = None
         optimizer2d = None
         criterion2d = None
     metric_3d = IoU(num_classes=3, ignore_index=2) # ground truth of 3D grid has 3 values:0, 1, -100. Converting label -100 to 2 we have 3 values: 0,1,2
 
-    trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, metric_3d, model_2d = model_2d, optimizer2d = optimizer2d, criterion2d = criterion2d)
+    trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, metric_3d, model_2d_fixed = model_2d_fixed, model_2d_trainable = model_2d_trainable, model_2d_classification = model_2d_classification, optimizer2d = optimizer2d, criterion2d = criterion2d)
     trainer.train()
     
 def test(cfg): 
