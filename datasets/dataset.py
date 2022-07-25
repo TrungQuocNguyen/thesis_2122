@@ -79,6 +79,7 @@ class ScanNet2D3D(Dataset):
     def __init__(self, cfg, split, overfit = None):
         super(Dataset, self).__init__()
         self.cfg = cfg
+        self.split = split
         if overfit != None:
             filename = split + '_overfit_' + overfit + '_chunks'
         else: 
@@ -162,6 +163,7 @@ class ScanNet2D3D(Dataset):
         depth_image = np.array(Image.open(file)) # [240, 320]
         # preprocess
         depth_image = self.resize_crop_image(depth_image, image_dims) # (256, 328)
+        depth_image = np.array(depth_image)
         depth_image = depth_image.astype(np.float32) / 1000.0
         return depth_image
 
@@ -170,7 +172,7 @@ class ScanNet2D3D(Dataset):
         # preprocess
         image = self.resize_crop_image(image, image_dims) # (256, 328,3)
         ########################## 2D image augmentation ###############################
-        if self.cfg["augmented_2d"]: 
+        if self.cfg["augmented_2d"] and self.split == 'train': 
             if image.mode == 'RGB': 
                 image = tf.adjust_hue(tf.adjust_saturation(tf.adjust_contrast(tf.adjust_brightness(image, self.augmentation_factor), self.augmentation_factor), self.augmentation_factor), self.hue_factor)
                 image = tf.gaussian_blur(image, kernel_size= (3,7), sigma = self.gaussian_sigma)

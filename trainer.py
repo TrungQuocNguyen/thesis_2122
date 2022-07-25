@@ -200,7 +200,7 @@ class Trainer3DReconstruction(BaseTrainer):
                         _, tensorboard_preds = torch.max(mask, 1)
                         tensorboard_preds = tensorboard_preds.cpu().detach()
         preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
-        loss = self.criterion(preds, targets)/self.accum_step
+        loss = 10*self.criterion(preds, targets)/self.accum_step
 
         if not self.proxy_loss: 
             loss.backward()
@@ -208,7 +208,7 @@ class Trainer3DReconstruction(BaseTrainer):
             predicted_images = torch.cat(predicted_images) # [max_num_images*batch_size, 41, 256, 328]
             target_images = torch.cat(target_images).to(self.device) # [max_num_images*batch_size, 256, 328]
             loss2d = self.criterion2d(predicted_images, target_images)/self.accum_step
-            (10*loss + loss2d).backward()
+            (loss + loss2d).backward()
 
         if (batch_idx+1) % self.accum_step == 0: 
             if self.plot_gradient: 
@@ -291,7 +291,7 @@ class Trainer3DReconstruction(BaseTrainer):
                         _, tensorboard_preds = torch.max(mask, 1)
                         tensorboard_preds = tensorboard_preds.cpu().detach()
         preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
-        loss = self.criterion(preds, targets)/self.accum_step
+        loss = 10*self.criterion(preds, targets)/self.accum_step
         if self.proxy_loss: 
             predicted_images = torch.cat(predicted_images) # [max_num_images*batch_size, 41, 256, 328]
             target_images = torch.cat(target_images).to(self.device) # [max_num_images*batch_size, 256, 328]
