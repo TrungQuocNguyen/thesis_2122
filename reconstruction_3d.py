@@ -108,8 +108,12 @@ def train(cfg):
             criterion_weights = torch.tensor(SCANNET2D_CLASS_WEIGHTS, device = 'cuda')
             #criterion2d = nn.CrossEntropyLoss(ignore_index = cfg["model_2d"]["ignore_index"])
             criterion2d = FixedCrossEntropyLoss(weight= criterion_weights, ignore_index = cfg["model_2d"]["ignore_index"], label_smoothing= 0.1)
+            metric_2d = IoU(num_classes=cfg["model_2d"]["num_classes"], ignore_index=cfg["model_2d"]["IoU_ignore_index"])
+            metric_2d_all_classes = IoU(num_classes=cfg["model_2d"]["num_classes"], ignore_index= cfg["model_2d"]["ignore_index"])
         else: 
             criterion2d = None
+            metric_2d = None
+            metric_2d_all_classes = None
     else: 
         model_2d_fixed = None
         model_2d_trainable = None
@@ -118,7 +122,7 @@ def train(cfg):
         criterion2d = None
     metric_3d = IoU(num_classes=3, ignore_index=2) # ground truth of 3D grid has 3 values:0, 1, -100. Converting label -100 to 2 we have 3 values: 0,1,2
 
-    trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, metric_3d, model_2d_fixed = model_2d_fixed, model_2d_trainable = model_2d_trainable, model_2d_classification = model_2d_classification, optimizer2d = optimizer2d, criterion2d = criterion2d)
+    trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, metric_3d, model_2d_fixed = model_2d_fixed, model_2d_trainable = model_2d_trainable, model_2d_classification = model_2d_classification, optimizer2d = optimizer2d, criterion2d = criterion2d, metric_2d = metric_2d, metric_2d_all_classes = metric_2d_all_classes)
     trainer.train()
     
 def test(cfg): 

@@ -25,6 +25,8 @@ class Trainer3DReconstruction(BaseTrainer):
             if self.proxy_loss: 
                 print("Using proxy loss for 2D features")
                 self.criterion2d = kwargs["criterion2d"]
+                self.metric_2d = kwargs["metric_2d"]
+                self.metric_2d_all_classes = kwargs["metric_2d_all_classes"]
                 self.add_figure_tensorboard = cfg["trainer"]["add_figure_tensorboard"]
                 if self.add_figure_tensorboard: 
                     self.mean = torch.tensor(self.cfg["color_mean"]).reshape(1,3,1,1)
@@ -106,6 +108,8 @@ class Trainer3DReconstruction(BaseTrainer):
                         val_loss2d = 0.0
                     j = 0
                     self.metric_3d.reset()
+                    self.metric_2d.reset()
+                    self.metric_2d_all_classes.reset()
                     with torch.no_grad(): 
                         while j < self.accum_step:  
                             try: 
@@ -122,14 +126,18 @@ class Trainer3DReconstruction(BaseTrainer):
                             if self.proxy_loss: 
                                 val_loss2d += temp2
                             j = j+1
-                        iou, _ = self.metric_3d.value()
+                        iou3d, _ = self.metric_3d.value()
+                        _, miou_2d = self.metric_2d.value()
+                        _, miou_2d_all_classes = self.metric_2d_all_classes.value()
                     #self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
-                    self.writer.add_scalar('step_IoU', iou[1], global_step= len(self.train_loader)*epoch + batch_idx )
+                    self.writer.add_scalar('step_IoU', iou3d[1], global_step= len(self.train_loader)*epoch + batch_idx )
                     self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = len(self.train_loader)*epoch + batch_idx)
                     print('[Iteration %d/%d] VAL loss: %.3f' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, val_loss))
                     if self.proxy_loss: 
                         self.writer.add_scalars('step_loss2d', {'train_loss': train_loss2d.val, 'val_loss': val_loss2d}, global_step = len(self.train_loader)*epoch + batch_idx)
                         print('[Iteration %d/%d] VAL loss2d: %.3f' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, val_loss2d))
+                        self.writer.add_scalar('step_mIoU_2d', miou_2d, global_step= len(self.train_loader)*epoch + batch_idx )
+                        self.writer.add_scalar('step_mIoU_2d_all_classes', miou_2d_all_classes, global_step= len(self.train_loader)*epoch + batch_idx )
                         if self.add_figure_tensorboard: 
                             self.writer.add_figure('val predictions vs targets', plot_preds(blobs['nearest_images']['images'][0]*self.std+self.mean, blobs['nearest_images']['label_images'][0], tensorboard_preds), global_step = len(self.train_loader)*epoch + batch_idx)
 
@@ -200,7 +208,7 @@ class Trainer3DReconstruction(BaseTrainer):
             predicted_images = torch.cat(predicted_images) # [max_num_images*batch_size, 41, 256, 328]
             target_images = torch.cat(target_images).to(self.device) # [max_num_images*batch_size, 256, 328]
             loss2d = self.criterion2d(predicted_images, target_images)/self.accum_step
-            (loss + loss2d).backward()
+            (10*loss + loss2d).backward()
 
         if (batch_idx+1) % self.accum_step == 0: 
             if self.plot_gradient: 
@@ -292,6 +300,12 @@ class Trainer3DReconstruction(BaseTrainer):
             _, preds = torch.max(preds, 1) # preds: [N, 32, 32, 64], cuda
             targets[targets == -100] = 2 #target: [N, 32, 32, 64], cuda
             self.metric_3d.add(preds.detach(), targets.detach())
+            if self.proxy_loss: 
+                _, predicted_images = torch.max(predicted_images, 1)
+                predicted_images = predicted_images.detach()
+                target_images = target_images.detach()
+                self.metric_2d.add(predicted_images, target_images)
+                self.metric_2d_all_classes.add(predicted_images, target_images)
         return loss.item(), loss2d.item(), tensorboard_preds
     def _voxel_pixel_association(self, blobs): 
         batch_size = blobs['data'].shape[0]
