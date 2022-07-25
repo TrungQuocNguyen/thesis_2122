@@ -108,8 +108,9 @@ class Trainer3DReconstruction(BaseTrainer):
                         val_loss2d = 0.0
                     j = 0
                     self.metric_3d.reset()
-                    self.metric_2d.reset()
-                    self.metric_2d_all_classes.reset()
+                    if self.proxy_loss: 
+                        self.metric_2d.reset()
+                        self.metric_2d_all_classes.reset()
                     with torch.no_grad(): 
                         while j < self.accum_step:  
                             try: 
@@ -127,8 +128,9 @@ class Trainer3DReconstruction(BaseTrainer):
                                 val_loss2d += temp2
                             j = j+1
                         iou3d, _ = self.metric_3d.value()
-                        _, miou_2d = self.metric_2d.value()
-                        _, miou_2d_all_classes = self.metric_2d_all_classes.value()
+                        if self.proxy_loss: 
+                            _, miou_2d = self.metric_2d.value()
+                            _, miou_2d_all_classes = self.metric_2d_all_classes.value()
                     #self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
                     self.writer.add_scalar('step_IoU', iou3d[1], global_step= len(self.train_loader)*epoch + batch_idx )
                     self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = len(self.train_loader)*epoch + batch_idx)
