@@ -82,7 +82,7 @@ class ScanNet2D3D(Dataset):
         if overfit != None:
             filename = split + '_overfit_' + overfit + '_chunks'
         else: 
-            if cfg['augmented'] and split == 'train': 
+            if cfg['augmented_3d'] and split == 'train': 
                 filename = 'augmented_' + split + '_clean'
             else: 
                 filename = split + '_clean'
@@ -97,7 +97,10 @@ class ScanNet2D3D(Dataset):
         scene_id = self.file['scene_id'][idx]
         scan_id = self.file['scan_id'][idx]
         world2grid = self.file['world_to_grid'][idx] # np array [4,4], float 32
-
+        if self.cfg["augmented_2d"]: 
+            self.augmentation_factor = random.uniform(0.7, 1.3)
+            self.hue_factor = random.uniform(-0.3, 0.3)
+            self.gaussian_sigma = random.uniform(0.1, 4)
         depths = []
         images = []
         poses = []
@@ -152,7 +155,6 @@ class ScanNet2D3D(Dataset):
         resize_width = int(math.floor(new_image_dims[1] * float(image_dims[0]) / float(image_dims[1])))
         image = T.Resize([new_image_dims[1], resize_width], interpolation=InterpolationMode.NEAREST)(Image.fromarray(image))
         image = T.CenterCrop([new_image_dims[1], new_image_dims[0]])(image)
-        image = np.array(image) # [256, 328]
         return image
 
     def load_depth(self, file, image_dims):
@@ -167,6 +169,13 @@ class ScanNet2D3D(Dataset):
         image = np.array(Image.open(file)) # [240, 320]
         # preprocess
         image = self.resize_crop_image(image, image_dims) # (256, 328,3)
+        ########################## 2D image augmentation ###############################
+        if self.cfg["augmented_2d"]: 
+            if image.mode == 'RGB': 
+                image = tf.adjust_hue(tf.adjust_saturation(tf.adjust_contrast(tf.adjust_brightness(image, self.augmentation_factor), self.augmentation_factor), self.augmentation_factor), self.hue_factor)
+                image = tf.gaussian_blur(image, kernel_size= (3,7), sigma = self.gaussian_sigma)
+        ################################################################################
+        image = np.array(image) # [256, 328]
         if len(image.shape) == 3: # color image
             image =  np.transpose(image, [2, 0, 1])  # move feature to front
             image = T.Normalize(mean=self.cfg["color_mean"], std=self.cfg["color_std"])(torch.Tensor(image.astype(np.float32) / 255.0))

@@ -2,13 +2,14 @@
     "root": "/mnt/raid/tnguyen/scannet_2d3d",
     "overfit": null,
     "return_label_grid": false,
-    "augmented": true,
+    "augmented_3d": true,
+    "augmented_2d": true, 
     "use_2d_feat_input": true, 
     "depth_shape": [41, 32],
     "image_shape": [328, 256],
     "color_mean": [0.496342, 0.466664, 0.440796],
     "color_std":  [0.277856, 0.28623, 0.291129],
-    "batch_size": 8,
+    "batch_size": 4,
     "shuffle_train": true,
     "shuffle_val": true,
     "num_workers": 8,
@@ -31,12 +32,13 @@
         "freeze_dropout": false, 
         "proxy_loss": true, 
         "ignore_index": 0, 
-        "load_path_2d": "/home/tnguyen/thesis_2122/saved/models/enet/enet_for_3d_32x41/model_best.pth.tar"
+        "IoU_ignore_index": [0,13,15,17,18,19,20,21,22,23,25,26,27,29,30,31,32,35,37,38,40], 
+        "load_path_2d": "/home/tnguyen/thesis_2122/saved/models/enet/enet_3dmv_label_smooth_adam_augmented_32x41/model_best.pth.tar"
     },
     "trainer": {
-        "epochs": 30,
+        "epochs": 10,
         "log_nth": 1,
-        "val_check_interval": 3752,
+        "val_check_interval": 1244,
         "accumulation_step": 8, 
         "single_sample" : false,
         "add_figure_tensorboard": true,  
@@ -51,6 +53,6 @@
     }, 
     "optimizer_2d": {
         "learning_rate": 1e-3,
-        "weight_decay": 0.001
+        "weight_decay": 0
     }
 }
