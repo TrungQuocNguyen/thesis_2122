@@ -65,8 +65,8 @@ def train(cfg):
     projector.update_intrinsic(intrinsic)
     
     #model_3d = ConvNeXtUNet(cfg, num_images)
-    model_3d  = ResNeXtUNet(cfg, num_images)
-    #model_3d  = SurfaceNet(cfg, num_images)
+    #model_3d  = ResNeXtUNet(cfg, num_images)
+    model_3d  = SurfaceNet(cfg, num_images)
     #model_3d  = Dense3DNetwork(cfg, num_images)
     print_params(model_3d)
     model_3d.to(device)
@@ -120,6 +120,8 @@ def train(cfg):
         model_2d_classification = None
         optimizer2d = None
         criterion2d = None
+        metric_2d = None
+        metric_2d_all_classes = None
     metric_3d = IoU(num_classes=3, ignore_index=2) # ground truth of 3D grid has 3 values:0, 1, -100. Converting label -100 to 2 we have 3 values: 0,1,2
 
     trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, metric_3d, model_2d_fixed = model_2d_fixed, model_2d_trainable = model_2d_trainable, model_2d_classification = model_2d_classification, optimizer2d = optimizer2d, criterion2d = criterion2d, metric_2d = metric_2d, metric_2d_all_classes = metric_2d_all_classes)
