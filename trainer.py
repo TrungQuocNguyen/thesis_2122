@@ -43,11 +43,14 @@ class Trainer3DReconstruction(BaseTrainer):
         if self.resume_training:
             self.best_loss = self.checkpoint["best_loss"]
     def train(self): 
+        if self.resume_training: 
+            self.count = self.checkpoint["count"]
+            self.count_val = self.checkpoint["count_val"]
+        else: 
+            self.count = 0
+            self.count_val = 0
         for epoch in range(self.start_epoch, self.epochs):
-            loss = self._train_epoch(epoch)
-            #if epoch % 10 == 9: 
-            #    if self.cfg["trainer"]["plot_gradient"]: 
-            #        self.plot_grad_flow(self.model.named_parameters(), epoch)
+            self._train_epoch(epoch)
 
     def _train_epoch(self, epoch): 
         train_loss = AverageMeter()
@@ -86,17 +89,18 @@ class Trainer3DReconstruction(BaseTrainer):
                 if self.proxy_loss: 
                     train_loss2d.update(loss2d_sum, self.num_images*batch_size*self.accum_step)
                     loss2d_sum =0.0
+                self.count +=1
                 
             if self.log_nth and (batch_idx  -count_jump_flag_train +1) % (self.log_nth * self.accum_step)== 0 : 
                 if self.single_sample: 
-                    self.writer.add_scalar('train_loss', train_loss.val, global_step= len(self.train_loader)*epoch + batch_idx )
+                    self.writer.add_scalar('train_loss', train_loss.val, global_step= self.count)
                     if self.proxy_loss: 
-                        self.writer.add_scalar('train_loss2d', train_loss2d.val, global_step= len(self.train_loader)*epoch + batch_idx )
-                print('[Iteration %d/%d] TRAIN loss: %.3f(%.3f)' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, train_loss.val, train_loss.avg))
+                        self.writer.add_scalar('train_loss2d', train_loss2d.val, global_step= self.count)
+                print('[Iteration %d] TRAIN loss: %.3f(%.3f)' %(self.count, train_loss.val, train_loss.avg))
                 if self.proxy_loss: 
-                    print('[Iteration %d/%d] TRAIN loss2d: %.3f(%.3f)' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, train_loss2d.val, train_loss2d.avg))
+                    print('[Iteration %d] TRAIN loss2d: %.3f(%.3f)' %(self.count, train_loss2d.val, train_loss2d.avg))
                     if self.add_figure_tensorboard: 
-                        self.writer.add_figure('train predictions vs targets', plot_preds(blobs['nearest_images']['images'][0]*self.std+self.mean, blobs['nearest_images']['label_images'][0], tensorboard_preds), global_step = len(self.train_loader)*epoch + batch_idx)
+                        self.writer.add_figure('train predictions vs targets', plot_preds(blobs['nearest_images']['images'][0]*self.std+self.mean, blobs['nearest_images']['label_images'][0], tensorboard_preds), global_step = self.count)
                 if not self.single_sample: 
                     self.model.eval()
                     if self.cfg['use_2d_feat_input']: 
@@ -132,29 +136,31 @@ class Trainer3DReconstruction(BaseTrainer):
                             _, miou_2d = self.metric_2d.value()
                             _, miou_2d_all_classes = self.metric_2d_all_classes.value()
                     #self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
-                    self.writer.add_scalar('step_IoU', iou3d[1], global_step= len(self.train_loader)*epoch + batch_idx )
-                    self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = len(self.train_loader)*epoch + batch_idx)
-                    print('[Iteration %d/%d] VAL loss: %.3f' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, val_loss))
+                    self.writer.add_scalar('step_IoU', iou3d[1], global_step= self.count)
+                    self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = self.count)
+                    print('[Iteration %d] VAL loss: %.3f' %(self.count, val_loss))
                     if self.proxy_loss: 
-                        self.writer.add_scalars('step_loss2d', {'train_loss': train_loss2d.val, 'val_loss': val_loss2d}, global_step = len(self.train_loader)*epoch + batch_idx)
-                        print('[Iteration %d/%d] VAL loss2d: %.3f' %(len(self.train_loader)*epoch + batch_idx+1, len(self.train_loader)*self.epochs, val_loss2d))
-                        self.writer.add_scalar('step_mIoU_2d', miou_2d, global_step= len(self.train_loader)*epoch + batch_idx )
-                        self.writer.add_scalar('step_mIoU_2d_all_classes', miou_2d_all_classes, global_step= len(self.train_loader)*epoch + batch_idx )
+                        self.writer.add_scalars('step_loss2d', {'train_loss': train_loss2d.val, 'val_loss': val_loss2d}, global_step = self.count)
+                        print('[Iteration %d] VAL loss2d: %.3f' %(self.count, val_loss2d))
+                        self.writer.add_scalar('step_mIoU_2d', miou_2d, global_step= self.count )
+                        self.writer.add_scalar('step_mIoU_2d_all_classes', miou_2d_all_classes, global_step= self.count)
                         if self.add_figure_tensorboard: 
-                            self.writer.add_figure('val predictions vs targets', plot_preds(blobs['nearest_images']['images'][0]*self.std+self.mean, blobs['nearest_images']['label_images'][0], tensorboard_preds), global_step = len(self.train_loader)*epoch + batch_idx)
+                            self.writer.add_figure('val predictions vs targets', plot_preds(blobs['nearest_images']['images'][0]*self.std+self.mean, blobs['nearest_images']['label_images'][0], tensorboard_preds), global_step = self.count)
 
             if self.val_check_interval and (batch_idx - count_jump_flag_train+1) % (self.val_check_interval*self.accum_step) == 0: 
                 if not self.single_sample: 
-                    num_val_epoch = epoch*(len(self.train_loader)// self.val_check_interval) + batch_idx//self.val_check_interval +1
+                    self.count_val +=1
                     if self.proxy_loss: 
-                        loss, loss2d = self._val_epoch(num_val_epoch)  #comment this when overfitting with 10 train and 4 val
+                        loss, loss2d = self._val_epoch(self.count_val)  #comment this when overfitting with 10 train and 4 val
                     else: 
-                        loss = self._val_epoch(num_val_epoch)
+                        loss = self._val_epoch(self.count_val)
                 is_best = loss < self.best_loss
                 self.best_loss = min(loss, self.best_loss)
                 
                 self.save_checkpoint({
                     'epoch': epoch, 
+                    'count': self.count, 
+                    'count_val': self.count_val,
                     'state_dict': self.model.state_dict(), 
                     'best_loss': self.best_loss, 
                     'optimizer': self.optimizer.state_dict()
@@ -167,18 +173,6 @@ class Trainer3DReconstruction(BaseTrainer):
                     self.save_checkpoint({
                     'optimizer': self.optimizer2d.state_dict()
                 }, is_best, self.checkpoint_2d_optimizer, self.best_2d_optimizer)
-                
-                val_epoch_loss = loss 
-                if self.proxy_loss: 
-                    val_epoch_loss2d = loss2d 
-        # comment this block when overfitting with 10 train and 4 val    
-        if self.log_nth and not self.single_sample: 
-            print('[Epoch %d/%d] TRAIN loss: %.3f' %(epoch+1, self.epochs, train_loss.avg))
-            self.writer.add_scalars('epoch_loss', {'train_loss': train_loss.avg, 'val_loss': val_epoch_loss }, global_step = epoch)
-            if self.proxy_loss: 
-                print('[Epoch %d/%d] TRAIN loss2d: %.3f' %(epoch+1, self.epochs, train_loss2d.avg))
-                self.writer.add_scalars('epoch_loss2d', {'train_loss': train_loss2d.avg, 'val_loss': val_epoch_loss2d }, global_step = epoch)
-        return train_loss.avg
 
 
     def _train_step(self, blobs, batch_idx): 
@@ -214,14 +208,14 @@ class Trainer3DReconstruction(BaseTrainer):
 
         if (batch_idx+1) % self.accum_step == 0: 
             if self.plot_gradient: 
-                self.plot_grad_flow('model_3d', self.model.named_parameters(), batch_idx)
+                self.plot_grad_flow('model_3d', self.model.named_parameters(), self.count+1)
             self.optimizer.step()
             self.optimizer.zero_grad()
             if self.cfg['use_2d_feat_input']: 
                 if self.plot_gradient: 
-                    self.plot_grad_flow('model_2d_trainable', self.model_2d_trainable.named_parameters(), batch_idx)
+                    self.plot_grad_flow('model_2d_trainable', self.model_2d_trainable.named_parameters(), self.count+1)
                     if self.proxy_loss: 
-                        self.plot_grad_flow('model_2d_classification', self.model_2d_classification.named_parameters(), batch_idx)
+                        self.plot_grad_flow('model_2d_classification', self.model_2d_classification.named_parameters(), self.count+1)
                 self.optimizer2d.step()
                 self.optimizer2d.zero_grad() # optimizer call with and without proxy loss is the same 
         return loss.item(), loss2d.item(), tensorboard_preds
