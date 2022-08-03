@@ -180,10 +180,10 @@ class Model3DResNeXt(nn.Module):
 
         return nn.Sequential(*layers)
 
-    #def forward(self, blobs, device):
-    def forward(self, x):
+    def forward(self, blobs, device):
+    #def forward(self, x):
         #blobs['data']: [batch_size, 32, 32, 64]
-        '''self.batch_size = blobs['data'].shape[0]
+        self.batch_size = blobs['data'].shape[0]
         grid_shape = blobs['data'].shape[-3:] # [32, 32, 64]
         x = []
         for i in range(self.batch_size):
@@ -208,7 +208,7 @@ class Model3DResNeXt(nn.Module):
                 sz = imageft.shape # [max_num_images, 3, 64, 32, 32]
                 imageft = imageft.view(-1, sz[2], sz[3], sz[4]) # [max_num_images*3, 64, 32, 32]
                 x.append(imageft.permute(0,3,2,1)) # list of [max_num_images*3, 32, 32, 64][max_num_images*3, x,y,z]
-        x = torch.stack(x, dim = 0)  # [batch_size, (max_num_images*3) | 128, 32, 32, 64] [in order x,y,z]'''
+        x = torch.stack(x, dim = 0)  # [batch_size, (max_num_images*3) | 128, 32, 32, 64] [in order x,y,z]
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
