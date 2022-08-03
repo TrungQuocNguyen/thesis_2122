@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import CrossEntropyLoss
 import torch.optim as optim
-from models import Dense3DNetwork, SurfaceNet, ResUNet, ResNeXtUNet, ConvNeXtUNet
+from models import Model3DResNeXt
 from models import ENet, create_enet_for_3d
 from datasets import ScanNet2D3D, get_dataloader
 from trainer import Trainer3DReconstruction
@@ -66,8 +66,9 @@ def train(cfg):
     
     #model_3d = ConvNeXtUNet(cfg, num_images)
     #model_3d  = ResNeXtUNet(cfg, num_images)
-    model_3d  = SurfaceNet(cfg, num_images)
+    #model_3d  = SurfaceNet(cfg, num_images)
     #model_3d  = Dense3DNetwork(cfg, num_images)
+    model_3d = Model3DResNeXt(cfg, num_images)
     print_params(model_3d)
     model_3d.to(device)
 
@@ -131,7 +132,7 @@ def test(cfg):
     pass
 if __name__ =='__main__': 
     parser = argparse.ArgumentParser(description='Training network for 3D reconstruction task')
-    parser.add_argument('-c', '--config', default='experiments/cfgs/pretrained_feat_input_3d_recon.json',type=str,
+    parser.add_argument('-c', '--config', default='experiments/cfgs/rgb_input_3d_recon.json',type=str,
                         help='Path to the config file (default: pretrained_feat_input_3d_recon.json)')
     parser.add_argument('--mode', type=str, default='train')
     args = parser.parse_args()
