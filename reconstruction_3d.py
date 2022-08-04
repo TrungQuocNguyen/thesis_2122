@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import CrossEntropyLoss
 import torch.optim as optim
-from models import Model3DResNeXt
+from models import Model3DResNeXt, SurfaceResNeXt, SurfaceNet
 from models import ENet, create_enet_for_3d
 from datasets import ScanNet2D3D, get_dataloader
 from trainer import Trainer3DReconstruction
@@ -66,9 +66,9 @@ def train(cfg):
     
     #model_3d = ConvNeXtUNet(cfg, num_images)
     #model_3d  = ResNeXtUNet(cfg, num_images)
-    #model_3d  = SurfaceNet(cfg, num_images)
-    #model_3d  = Dense3DNetwork(cfg, num_images)
-    model_3d = Model3DResNeXt(cfg, num_images)
+    model_3d  = SurfaceNet(cfg, num_images)
+    #model_3d  = SurfaceResNeXt(cfg, num_images)
+    #model_3d = Model3DResNeXt(cfg, num_images)
     print_params(model_3d)
     model_3d.to(device)
 

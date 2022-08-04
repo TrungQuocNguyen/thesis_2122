@@ -123,6 +123,8 @@ class Model3DResNeXt(nn.Module):
         super(Model3DResNeXt, self).__init__()
         self.cfg = cfg
         self.inplanes = 128 if cfg["use_2d_feat_input"] else num_images*3  # 15 or 128
+        if cfg["use_2d_feat_input"]: 
+            self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
         self.cardinality = 32
         self.baseWidth = 4
         layers = [3,3, 27,3, 5,3,3]
@@ -218,5 +220,113 @@ class Model3DResNeXt(nn.Module):
         x = self.layer6(x)
         x = self.layer7(x)
         x = self.classifier(x)
+
+        return x
+class SurfaceResNeXt(nn.Module): 
+    '''Network following SurfaceNet architecture with ResNeXt block, used for 3D reconstruction task'''
+    def __init__(self, cfg, num_images): 
+        super(SurfaceResNeXt, self).__init__()
+        self.cfg = cfg
+        self.inplanes = 128 if cfg["use_2d_feat_input"] else num_images*3 
+        self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
+        self.cardinality = 16
+        self.baseWidth = 8
+        layers = [7,7, 36,7, 7, 7, 7, 7, 7]
+        
+        self.conv1 = self._make_layer(BottleneckDown,16, layers[0]) # [N,64,32,32,64] ( [N, C, H, W, D])
+        self.conv2 = self._make_layer(BottleneckDown, 32, layers[1],2) # [N, 128, 16, 16, 32]
+        self.conv3 = self._make_layer(BottleneckDown, 64, layers[2],2) # [N, 256, 8,8,16]
+        self.conv4 = self._make_layer(BottleneckDown, 128, layers[3]) # [N, 512, 8, 8, 16]
+
+        self.inplanes = 64
+        self.upconv1 = self._make_layer(BottleneckUp, 8, layers[4]) # [N, 32, 32, 32, 64]
+        self.inplanes = 128
+        self.upconv2 = self._make_layer(BottleneckUp, 8, layers[5],2) # [N, 32, 32, 32, 64]
+        self.inplanes = 256
+        self.upconv3 = self._make_layer(BottleneckUp, 8, layers[6],4) # [N, 32, 32, 32, 64]
+        self.inplanes = 512
+        self.upconv4 = self._make_layer(BottleneckUp, 8, layers[7],4) # [N, 32, 32, 32, 64]
+
+        self.inplanes = 128
+        self.conv5 = self._make_layer(BottleneckDown, 64, layers[8])
+
+        self.classifier = nn.Sequential(nn.Conv3d(256, 2, kernel_size= (1,1,1), padding= 0))
+    
+    def _make_layer(self, block, planes, blocks, stride=1):
+        """ Stack n bottleneck modules where n is inferred from the depth of the network.
+        Args:
+            block: block type used to construct ResNext
+            planes: number of output channels (need to multiply by block.expansion)
+            blocks: number of blocks to be built
+            stride: factor to reduce the spatial dimensionality in the first bottleneck of the block.
+        Returns: a Module consisting of n sequential bottlenecks.
+        """
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            if self.inplanes < planes* block.expansion: 
+                downsample = nn.Sequential(
+                    nn.Conv3d(self.inplanes, planes * block.expansion,
+                            kernel_size=1, stride=stride, bias=False),
+                    nn.BatchNorm3d(planes * block.expansion),
+                )
+            else: 
+                downsample = nn.Sequential(
+                    nn.ConvTranspose3d(self.inplanes, planes * block.expansion,
+                            kernel_size=1, stride=stride, output_padding = stride-1, bias=False),
+                    nn.BatchNorm3d(planes * block.expansion),
+                )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, self.baseWidth, self.cardinality, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for i in range(1, blocks):
+            layers.append(block(self.inplanes, planes, self.baseWidth, self.cardinality))
+
+        return nn.Sequential(*layers)
+
+    def forward(self, blobs, device):
+    #def forward(self, x):
+        #blobs['data']: [batch_size, 32, 32, 64]
+        self.batch_size = blobs['data'].shape[0]
+        grid_shape = blobs['data'].shape[-3:] # [32, 32, 64]
+        x = []
+        for i in range(self.batch_size):
+            if self.cfg['use_2d_feat_input']: 
+                imageft = blobs['feat_2d'][i] # [max_num_images, 128, 32, 41]
+            else: 
+                imageft = blobs['nearest_images']['images'][i].to(device)  #[max_num_images, 3, 256, 328]
+            proj3d = blobs['proj_ind_3d'][i].to(device) # [max_num_images, 32*32*64 + 1]
+            proj2d = blobs['proj_ind_2d'][i].to(device) #[max_num_images, 32*32*64 + 1]
+
+            imageft = [Projection.apply(ft, ind3d, ind2d, grid_shape) for ft, ind3d, ind2d in zip(imageft, proj3d, proj2d)]
+            if self.cfg['use_2d_feat_input']: 
+                imageft = torch.stack(imageft, dim=4) # [128, 64, 32, 32, max_num_images] [C, z, y, x, max_num_images]
+                sz = imageft.shape # [128, 64, 32, 32, max_num_images]
+                imageft = imageft.view(sz[0], -1, sz[4]) # [128, 64*32*32, max_num_images]
+                imageft = self.initial_pooling(imageft)  # [128, 64*32*32,1]
+                imageft = imageft.view(sz[0], sz[1], sz[2], sz[3]) # [128, 64, 32, 32]
+                x.append(imageft.permute(0,3,2,1)) # list of [128, 32, 32, 64] [in order x, y, z]
+
+            else: 
+                imageft = torch.stack(imageft, dim=0) #[max_num_images, 3, 64, 32, 32] [max_num_images, C, z, y, x]
+                sz = imageft.shape # [max_num_images, 3, 64, 32, 32]
+                imageft = imageft.view(-1, sz[2], sz[3], sz[4]) # [max_num_images*3, 64, 32, 32]
+                x.append(imageft.permute(0,3,2,1)) # list of [max_num_images*3, 32, 32, 64][max_num_images*3, x,y,z]
+        x = torch.stack(x, dim = 0)  # [batch_size, (max_num_images*3) | 128, 32, 32, 64] [in order x,y,z]
+
+        x = self.conv1(x) # [N,64,32,32,64] 
+        s1 = self.upconv1(x) # [N, 32, 32, 32, 64]
+                
+        x  = self.conv2(x) # [N, 128, 16, 16, 32]
+        s2 = self.upconv2(x) # [N, 32, 32, 32, 64]
+
+        x = self.conv3(x) # [N, 256, 8,8,16]
+        s3 = self.upconv3(x) # [N, 32, 32, 32, 64]
+
+        x  = self.conv4(x) # [N, 512, 8, 8, 16]
+        s4 = self.upconv4(x)# [N, 32, 32, 32, 64]
+                
+        x = self.conv5(torch.cat((s1,s2,s3,s4), dim = 1))
+        x = self.classifier(x) # [N, 2, 32, 32, 64]
 
         return x
