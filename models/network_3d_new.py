@@ -121,6 +121,7 @@ class Model3DResNeXt(nn.Module):
             num_classes: number of classes
         """
         super(Model3DResNeXt, self).__init__()
+        self.num_images = num_images
         self.cfg = cfg
         self.inplanes = 128 if cfg["use_2d_feat_input"] else num_images*3  # 15 or 128
         if cfg["use_2d_feat_input"]: 
@@ -190,7 +191,7 @@ class Model3DResNeXt(nn.Module):
         x = []
         for i in range(self.batch_size):
             if self.cfg['use_2d_feat_input']: 
-                imageft = blobs['feat_2d'][i] # [max_num_images, 128, 32, 41]
+                imageft = blobs['feat_2d'][i*self.num_images: (i+1)*self.num_images] # [max_num_images, 128, 32, 41]
             else: 
                 imageft = blobs['nearest_images']['images'][i].to(device)  #[max_num_images, 3, 256, 328]
             proj3d = blobs['proj_ind_3d'][i].to(device) # [max_num_images, 32*32*64 + 1]
@@ -226,6 +227,7 @@ class SurfaceResNeXt(nn.Module):
     '''Network following SurfaceNet architecture with ResNeXt block, used for 3D reconstruction task'''
     def __init__(self, cfg, num_images): 
         super(SurfaceResNeXt, self).__init__()
+        self.num_images = num_images
         self.cfg = cfg
         self.inplanes = 128 if cfg["use_2d_feat_input"] else num_images*3 
         self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
@@ -292,7 +294,7 @@ class SurfaceResNeXt(nn.Module):
         x = []
         for i in range(self.batch_size):
             if self.cfg['use_2d_feat_input']: 
-                imageft = blobs['feat_2d'][i] # [max_num_images, 128, 32, 41]
+                imageft = blobs['feat_2d'][i*self.num_images: (i+1)*self.num_images] # [max_num_images, 128, 32, 41]
             else: 
                 imageft = blobs['nearest_images']['images'][i].to(device)  #[max_num_images, 3, 256, 328]
             proj3d = blobs['proj_ind_3d'][i].to(device) # [max_num_images, 32*32*64 + 1]

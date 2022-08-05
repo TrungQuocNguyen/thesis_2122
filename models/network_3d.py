@@ -63,6 +63,7 @@ class Dense3DNetwork(nn.Module):
         '''Dense 3D CNN network consisting series of ResNet blocks'''
         def __init__(self, cfg, num_images): 
                 super(Dense3DNetwork, self).__init__()
+                self.num_images = num_images
                 self.cfg = cfg
                 num_feat = 128 if cfg["use_2d_feat_input"] else num_images*3 
                 self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
@@ -107,7 +108,7 @@ class Dense3DNetwork(nn.Module):
                 _imageft = []
                 for i in range(self.batch_size):
                         if self.cfg['use_2d_feat_input']: 
-                                imageft = blobs['feat_2d'][i] # [max_num_images, 128, 32, 41]
+                                imageft = blobs['feat_2d'][i*self.num_images: (i+1)*self.num_images] # [max_num_images, 128, 32, 41]
                         else: 
                                 imageft = blobs['nearest_images']['images'][i].to(device)  #[max_num_images, 3, 256, 328]
                         proj3d = blobs['proj_ind_3d'][i].to(device) # [max_num_images, 32*32*64 + 1]
@@ -136,6 +137,7 @@ class Dense3DNetwork(nn.Module):
 class ResUNet(nn.Module): 
         def __init__(self, cfg, num_images): 
                 super(ResUNet, self).__init__()
+                self.num_images = num_images
                 self.cfg = cfg
                 num_feat = 128 if cfg["use_2d_feat_input"] else num_images*3 
                 self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
@@ -209,7 +211,7 @@ class ResUNet(nn.Module):
                 _imageft = []
                 for i in range(self.batch_size):
                         if self.cfg['use_2d_feat_input']: 
-                                imageft = blobs['feat_2d'][i] # [max_num_images, 128, 32, 41]
+                                imageft = blobs['feat_2d'][i*self.num_images: (i+1)*self.num_images] # [max_num_images, 128, 32, 41]
                         else: 
                                 imageft = blobs['nearest_images']['images'][i].to(device)  #[max_num_images, 3, 256, 328]
                         proj3d = blobs['proj_ind_3d'][i].to(device) # [max_num_images, 32*32*64 + 1]
@@ -247,6 +249,7 @@ class ResUNet(nn.Module):
 class ResNeXtUNet(nn.Module): 
         def __init__(self, cfg, num_images): 
                 super(ResNeXtUNet, self).__init__()
+                self.num_images = num_images
                 self.cfg = cfg
                 num_feat = 128 if cfg["use_2d_feat_input"] else num_images*3 
                 self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
@@ -332,7 +335,7 @@ class ResNeXtUNet(nn.Module):
                 _imageft = []
                 for i in range(self.batch_size):
                         if self.cfg['use_2d_feat_input']: 
-                                imageft = blobs['feat_2d'][i] # [max_num_images, 128, 32, 41]
+                                imageft = blobs['feat_2d'][i*self.num_images: (i+1)*self.num_images] # [max_num_images, 128, 32, 41]
                         else: 
                                 imageft = blobs['nearest_images']['images'][i].to(device)  #[max_num_images, 3, 256, 328]
                         proj3d = blobs['proj_ind_3d'][i].to(device) # [max_num_images, 32*32*64 + 1]
@@ -371,6 +374,7 @@ class ResNeXtUNet(nn.Module):
 class ConvNeXtUNet(nn.Module): 
         def __init__(self, cfg, num_images): 
                 super(ConvNeXtUNet, self).__init__()
+                self.num_images = num_images
                 self.cfg = cfg
                 num_feat = 128 if cfg["use_2d_feat_input"] else num_images*3 
                 kernel_size = 7
@@ -453,7 +457,7 @@ class ConvNeXtUNet(nn.Module):
                 _imageft = []
                 for i in range(self.batch_size):
                         if self.cfg['use_2d_feat_input']: 
-                                imageft = blobs['feat_2d'][i] # [max_num_images, 128, 32, 41]
+                                imageft = blobs['feat_2d'][i*self.num_images: (i+1)*self.num_images] # [max_num_images, 128, 32, 41]
                         else: 
                                 imageft = blobs['nearest_images']['images'][i].to(device)  #[max_num_images, 3, 256, 328]
                         proj3d = blobs['proj_ind_3d'][i].to(device) # [max_num_images, 32*32*64 + 1]
@@ -490,6 +494,7 @@ class ConvNeXtUNet(nn.Module):
 '''class ConvNeXtUNet(nn.Module): 
         def __init__(self, cfg, num_images): 
                 super(ConvNeXtUNet, self).__init__()
+                self.num_images = num_images
                 self.cfg = cfg
                 num_feat = 128 if cfg["use_2d_feat_input"] else num_images*3 
                 kernel_size = 7
@@ -572,7 +577,7 @@ class ConvNeXtUNet(nn.Module):
                 _imageft = []
                 for i in range(self.batch_size):
                         if self.cfg['use_2d_feat_input']: 
-                                imageft = blobs['feat_2d'][i] # [max_num_images, 128, 32, 41]
+                                imageft = blobs['feat_2d'][i*self.num_images: (i+1)*self.num_images] # [max_num_images, 128, 32, 41]
                         else: 
                                 imageft = blobs['nearest_images']['images'][i].to(device)  #[max_num_images, 3, 256, 328]
                         proj3d = blobs['proj_ind_3d'][i].to(device) # [max_num_images, 32*32*64 + 1]
@@ -611,6 +616,7 @@ class SurfaceNet(nn.Module):
         '''Network following SurfaceNet architecture, used for 3D reconstruction task'''
         def __init__(self, cfg, num_images): 
                 super(SurfaceNet, self).__init__()
+                self.num_images = num_images
                 self.cfg = cfg
                 num_feat = 128 if cfg["use_2d_feat_input"] else num_images*3 
                 self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
@@ -717,7 +723,7 @@ class SurfaceNet(nn.Module):
                 _imageft = []
                 for i in range(self.batch_size):
                         if self.cfg['use_2d_feat_input']: 
-                                imageft = blobs['feat_2d'][i] # [max_num_images, 128, 32, 41]
+                                imageft = blobs['feat_2d'][i*self.num_images: (i+1)*self.num_images] # [max_num_images, 128, 32, 41]
                         else: 
                                 imageft = blobs['nearest_images']['images'][i].to(device)  #[max_num_images, 3, 256, 328]
                         proj3d = blobs['proj_ind_3d'][i].to(device) # [max_num_images, 32*32*64 + 1]

@@ -132,7 +132,9 @@ def test(cfg):
     pass
 if __name__ =='__main__': 
     parser = argparse.ArgumentParser(description='Training network for 3D reconstruction task')
-    parser.add_argument('-c', '--config', default='experiments/cfgs/rgb_input_3d_recon.json',type=str,
+    #parser.add_argument('-c', '--config', default='experiments/cfgs/rgb_input_3d_recon.json',type=str,
+    #                    help='Path to the config file (default: rgb_input_3d_recon.json)')
+    parser.add_argument('-c', '--config', default='experiments/cfgs/pretrained_feat_input_3d_recon.json',type=str,
                         help='Path to the config file (default: pretrained_feat_input_3d_recon.json)')
     parser.add_argument('--mode', type=str, default='train')
     args = parser.parse_args()

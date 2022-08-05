@@ -178,31 +178,37 @@ class Trainer3DReconstruction(BaseTrainer):
     def _train_step(self, blobs, batch_idx): 
         targets = blobs['data'].long().to(self.device) # [N, 32, 32, 64] 
         batch_size = targets.shape[0]
-        predicted_images = []
+        rgb_images = []
         target_images = []
         loss2d = torch.zeros(1)
         tensorboard_preds = 0.0
         if self.cfg['use_2d_feat_input']: 
-            blobs['feat_2d'] =  []
             for i in range(batch_size):
-                imageft = self.model_2d_fixed(blobs['nearest_images']['images'][i].to(self.device)) # feat: [max_num_images, 128, 32, 41], mask: [max_num_images, 41, 256, 328]
-                imageft = self.model_2d_trainable(imageft)
-                blobs['feat_2d'].append(imageft) # list of tensor, each tensor size [max_num_images, 128, depth_shape[1], depth_shape[0]]
+                rgb_images.append(blobs['nearest_images']['images'][i])
                 if self.proxy_loss: 
-                    mask = self.model_2d_classification(imageft)
-                    predicted_images.append(mask)
                     target_images.append(blobs['nearest_images']['label_images'][i])
-                    if i == 0 and self.add_figure_tensorboard: # take only the first sample in the batch for visualization
-                        _, tensorboard_preds = torch.max(mask, 1)
-                        tensorboard_preds = tensorboard_preds.cpu().detach()
+                    
+            rgb_images = torch.cat(rgb_images).to(self.device) # [max_num_images*batch_size,3, 256, 328]
+            imageft = self.model_2d_fixed(rgb_images) 
+            imageft = self.model_2d_trainable(imageft) # [max_num_images*batch_size,128, 32, 41]
+            blobs['feat_2d'] = imageft
+            if self.proxy_loss: 
+                predicted_images = self.model_2d_classification(imageft) # [max_num_images*batch_size,41, 32, 41]
+                if self.add_figure_tensorboard: 
+                    mask = predicted_images[0:5]
+                    _, tensorboard_preds = torch.max(mask, 1)
+                    tensorboard_preds = tensorboard_preds.cpu().detach()
+
+
+
+
         preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
         loss = 10*self.criterion(preds, targets)/self.accum_step
 
         if not self.proxy_loss: 
             loss.backward()
         else: 
-            predicted_images = torch.cat(predicted_images) # [max_num_images*batch_size, 41, 256, 328]
-            target_images = torch.cat(target_images).to(self.device) # [max_num_images*batch_size, 256, 328]
+            target_images = torch.cat(target_images).to(self.device)# [max_num_images*batch_size, 32, 41]
             loss2d = self.criterion2d(predicted_images, target_images)/self.accum_step
             (loss + loss2d).backward()
 
@@ -269,28 +275,30 @@ class Trainer3DReconstruction(BaseTrainer):
     def _eval_step(self, blobs, is_validating): 
         targets = blobs['data'].long().to(self.device) # [N, 32, 32, 64]
         batch_size = targets.shape[0]
-        predicted_images = []
+        rgb_images = []
         target_images = []
         loss2d = torch.zeros(1)
         tensorboard_preds = 0.0
         if self.cfg['use_2d_feat_input']: 
-            blobs['feat_2d'] =  []
             for i in range(batch_size):
-                imageft= self.model_2d_fixed(blobs['nearest_images']['images'][i].to(self.device)) # feat: [max_num_images, 128, 32, 41], mask: [max_num_images, 41, 256, 328]
-                imageft = self.model_2d_trainable(imageft)
-                blobs['feat_2d'].append(imageft) # list of tensor, each tensor size [max_num_images, 128, depth_shape[1], depth_shape[0]]
+                rgb_images.append(blobs['nearest_images']['images'][i])
                 if self.proxy_loss: 
-                    mask = self.model_2d_classification(imageft)
-                    predicted_images.append(mask)
                     target_images.append(blobs['nearest_images']['label_images'][i])
-                    if i == 0 and self.add_figure_tensorboard: #take only the first sample in the batch for visualization
-                        _, tensorboard_preds = torch.max(mask, 1)
-                        tensorboard_preds = tensorboard_preds.cpu().detach()
+            rgb_images = torch.cat(rgb_images).to(self.device) # [max_num_images*batch_size,3, 256, 328]
+            imageft = self.model_2d_fixed(rgb_images) 
+            imageft = self.model_2d_trainable(imageft) # [max_num_images*batch_size,128, 32, 41]
+            blobs['feat_2d'] = imageft
+            if self.proxy_loss: 
+                predicted_images = self.model_2d_classification(imageft) # [max_num_images*batch_size,41, 32, 41]
+                if self.add_figure_tensorboard: 
+                    mask = predicted_images[0:5]
+                    _, tensorboard_preds = torch.max(mask, 1)
+                    tensorboard_preds = tensorboard_preds.cpu().detach()
+
         preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
         loss = 10*self.criterion(preds, targets)/self.accum_step
         if self.proxy_loss: 
-            predicted_images = torch.cat(predicted_images) # [max_num_images*batch_size, 41, 256, 328]
-            target_images = torch.cat(target_images).to(self.device) # [max_num_images*batch_size, 256, 328]
+            target_images = torch.cat(target_images).to(self.device)# [max_num_images*batch_size, 32, 41]
             loss2d = self.criterion2d(predicted_images, target_images)/self.accum_step
         if is_validating: 
             _, preds = torch.max(preds, 1) # preds: [N, 32, 32, 64], cuda
