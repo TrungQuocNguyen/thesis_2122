@@ -1,5 +1,6 @@
 from base import BaseTrainer
 import os
+import math
 import numpy as np 
 import torch
 import torch.nn as nn
@@ -24,6 +25,7 @@ class Trainer3DReconstruction(BaseTrainer):
             self.optimizer2d = kwargs["optimizer2d"]
             if self.proxy_loss: 
                 print("Using proxy loss for 2D features")
+                self.eta = kwargs["eta"]
                 self.criterion2d = kwargs["criterion2d"]
                 self.metric_2d = kwargs["metric_2d"]
                 self.metric_2d_all_classes = kwargs["metric_2d_all_classes"]
@@ -99,6 +101,10 @@ class Trainer3DReconstruction(BaseTrainer):
                 print('[Iteration %d] TRAIN loss: %.3f(%.3f)' %(self.count, train_loss.val, train_loss.avg))
                 if self.proxy_loss: 
                     print('[Iteration %d] TRAIN loss2d: %.3f(%.3f)' %(self.count, train_loss2d.val, train_loss2d.avg))
+                    eta0 = self.eta[0].item()
+                    eta1 = self.eta[1].item()
+                    self.writer.add_scalar('eta_0', eta0, global_step= self.count)
+                    self.writer.add_scalar('eta_1', eta1, global_step= self.count)
                     if self.add_figure_tensorboard: 
                         self.writer.add_figure('train predictions vs targets', plot_preds(blobs['nearest_images']['images'][0]*self.std+self.mean, blobs['nearest_images']['label_images'][0], tensorboard_preds), global_step = self.count)
                 if not self.single_sample: 
@@ -141,6 +147,7 @@ class Trainer3DReconstruction(BaseTrainer):
                     print('[Iteration %d] VAL loss: %.3f' %(self.count, val_loss))
                     if self.proxy_loss: 
                         self.writer.add_scalars('step_loss2d', {'train_loss': train_loss2d.val, 'val_loss': val_loss2d}, global_step = self.count)
+                        self.writer.add_scalars('step_final_loss', {'train_loss': math.exp(-eta0)*train_loss.val + math.exp(-eta1)*train_loss2d.val + (eta0 + eta1)/2, 'val_loss': math.exp(-eta0)*val_loss + math.exp(-eta1)*val_loss2d + (eta0 + eta1)/2}, global_step = self.count)
                         print('[Iteration %d] VAL loss2d: %.3f' %(self.count, val_loss2d))
                         self.writer.add_scalar('step_mIoU_2d', miou_2d, global_step= self.count )
                         self.writer.add_scalar('step_mIoU_2d_all_classes', miou_2d_all_classes, global_step= self.count)
@@ -203,14 +210,15 @@ class Trainer3DReconstruction(BaseTrainer):
 
 
         preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
-        loss = 10*self.criterion(preds, targets)/self.accum_step
+        loss = self.criterion(preds, targets)/self.accum_step
 
         if not self.proxy_loss: 
             loss.backward()
         else: 
             target_images = torch.cat(target_images).to(self.device)# [max_num_images*batch_size, 32, 41]
             loss2d = self.criterion2d(predicted_images, target_images)/self.accum_step
-            (loss + loss2d).backward()
+            final_loss = torch.exp(-self.eta)[0]*loss + torch.exp(-self.eta)[1]*loss2d + self.eta.sum()/(2*self.accum_step)
+            final_loss.backward()
 
         if (batch_idx+1) % self.accum_step == 0: 
             if self.plot_gradient: 
@@ -296,7 +304,7 @@ class Trainer3DReconstruction(BaseTrainer):
                     tensorboard_preds = tensorboard_preds.cpu().detach()
 
         preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
-        loss = 10*self.criterion(preds, targets)/self.accum_step
+        loss = self.criterion(preds, targets)/self.accum_step
         if self.proxy_loss: 
             target_images = torch.cat(target_images).to(self.device)# [max_num_images*batch_size, 32, 41]
             loss2d = self.criterion2d(predicted_images, target_images)/self.accum_step

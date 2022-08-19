@@ -103,15 +103,18 @@ def train(cfg):
         model_2d_trainable.to(device)
         model_2d_classification.to(device)
 
-        optimizer2d = optim.AdamW([{'params': model_2d_trainable.parameters()}, {'params': model_2d_classification.parameters()}], lr = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"])
         #optimizer2d = optim.SGD(model_2d.parameters(), lr  = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"], momentum = 0, nesterov= False)
         if cfg["model_2d"]["proxy_loss"]: 
+            eta = torch.tensor([0.0, 0.0], requires_grad = True, device = 'cuda')
+            optimizer2d = optim.AdamW([{'params': model_2d_trainable.parameters()}, {'params': model_2d_classification.parameters()}, {'params': [eta], 'lr': cfg["optimizer"]["learning_rate"]}], lr = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"])
             criterion_weights = torch.tensor(SCANNET2D_CLASS_WEIGHTS, device = 'cuda')
             #criterion2d = nn.CrossEntropyLoss(ignore_index = cfg["model_2d"]["ignore_index"])
             criterion2d = FixedCrossEntropyLoss(weight= criterion_weights, ignore_index = cfg["model_2d"]["ignore_index"], label_smoothing= 0.1)
             metric_2d = IoU(num_classes=cfg["model_2d"]["num_classes"], ignore_index=cfg["model_2d"]["IoU_ignore_index"])
             metric_2d_all_classes = IoU(num_classes=cfg["model_2d"]["num_classes"], ignore_index= cfg["model_2d"]["ignore_index"])
         else: 
+            eta = None
+            optimizer2d = optim.AdamW([{'params': model_2d_trainable.parameters()}, {'params': model_2d_classification.parameters()}], lr = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"])
             criterion2d = None
             metric_2d = None
             metric_2d_all_classes = None
@@ -125,7 +128,7 @@ def train(cfg):
         metric_2d_all_classes = None
     metric_3d = IoU(num_classes=3, ignore_index=2) # ground truth of 3D grid has 3 values:0, 1, -100. Converting label -100 to 2 we have 3 values: 0,1,2
 
-    trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, metric_3d, model_2d_fixed = model_2d_fixed, model_2d_trainable = model_2d_trainable, model_2d_classification = model_2d_classification, optimizer2d = optimizer2d, criterion2d = criterion2d, metric_2d = metric_2d, metric_2d_all_classes = metric_2d_all_classes)
+    trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, metric_3d, model_2d_fixed = model_2d_fixed, model_2d_trainable = model_2d_trainable, model_2d_classification = model_2d_classification, optimizer2d = optimizer2d, criterion2d = criterion2d, metric_2d = metric_2d, metric_2d_all_classes = metric_2d_all_classes, eta = eta)
     trainer.train()
     
 def test(cfg): 
