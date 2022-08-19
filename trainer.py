@@ -12,12 +12,10 @@ class Trainer3DReconstruction(BaseTrainer):
         self.proxy_loss = cfg["model_2d"]["proxy_loss"]
         self.plot_gradient = cfg["trainer"]["plot_gradient"]
         if cfg["use_2d_feat_input"]:
-
             self.checkpoint_2d_model = os.path.join(self.model_folder, 'checkpoint_2d_model.pth.tar')
             self.best_2d_model_path = os.path.join(self.model_folder, 'model_2d_best.pth.tar')
             self.checkpoint_2d_optimizer = os.path.join(self.model_folder, 'checkpoint_2d_optimizer.pth.tar')
             self.best_2d_optimizer = os.path.join(self.model_folder, 'optimizer_2d_best.pth.tar')
-
             print("Using 2D features from ENet as input")
             self.model_2d_fixed = kwargs["model_2d_fixed"]
             self.model_2d_trainable = kwargs["model_2d_trainable"]
@@ -41,7 +39,6 @@ class Trainer3DReconstruction(BaseTrainer):
         self.val_check_interval = cfg["trainer"]["val_check_interval"]
         self.projector = projector
         self.best_loss = np.inf
-        
         if self.resume_training:
             self.best_loss = self.checkpoint["best_loss"]
     def train(self): 
@@ -205,10 +202,6 @@ class Trainer3DReconstruction(BaseTrainer):
                     mask = predicted_images[0:5]
                     _, tensorboard_preds = torch.max(mask, 1)
                     tensorboard_preds = tensorboard_preds.cpu().detach()
-
-
-
-
         preds = self.model(blobs, self.device) #[N, 2, 32, 32, 64]
         loss = self.criterion(preds, targets)/self.accum_step
 
@@ -233,7 +226,6 @@ class Trainer3DReconstruction(BaseTrainer):
                 self.optimizer2d.step()
                 self.optimizer2d.zero_grad() # optimizer call with and without proxy loss is the same 
         return loss.item(), loss2d.item(), tensorboard_preds
-
 
     def _val_epoch(self, epoch): 
         loss = 0.0
