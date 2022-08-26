@@ -119,6 +119,7 @@ def train(cfg):
             metric_2d = None
             metric_2d_all_classes = None
     else: 
+        eta = None
         model_2d_fixed = None
         model_2d_trainable = None
         model_2d_classification = None
