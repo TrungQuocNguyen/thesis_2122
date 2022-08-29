@@ -370,6 +370,10 @@ class ProjectionHelper():
         into a W,H,D volume 
         treat the depth image as a W,H array later according to pixel coordinates
         '''
+        #depth: [32, 41]
+        #camera_to_world: [4,4]
+        #world_to_grid: [4,4]
+        
         # compute projection by voxels -> image
         # camera pose is camera->world, invert it
         # TODO: invert everything outside and pass it in

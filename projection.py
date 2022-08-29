@@ -127,13 +127,16 @@ class Projection(Function):
     @staticmethod
     # bias is an optional argument
     def forward(ctx, label, lin_indices_3d, lin_indices_2d, volume_dims):
-        #label: [3,256, 328]
+        #label: [3,256, 328] or [128, 32, 41]
+        #lin_indices_3d: size [32*32*64 +1], first index is actual number of indices, other indices are in range 0... 32*32*64-1
+        #lin_indices_2d: size [32*32*64 + 1], first index is actual number of indices, other indices are in range 0... 32*41-1
+        #volume_dims: [32, 32, 64]
         h, w = label.shape[1], label.shape[2]
         ctx.save_for_backward(lin_indices_3d, lin_indices_2d)
         ctx.h = h
         ctx.w = w
-        num_label_ft = 1 if len(label.shape) == 2 else label.shape[0]
-        output = label.new(num_label_ft, volume_dims[2], volume_dims[1], volume_dims[0]).fill_(0)
+        num_label_ft = 1 if len(label.shape) == 2 else label.shape[0] # 128
+        output = label.new(num_label_ft, volume_dims[2], volume_dims[1], volume_dims[0]).fill_(0) # output: [128, 64, 32, 32] filled with 0 in order z, y, x
         num_ind = lin_indices_3d[0]
         if num_ind > 0:
             output.view(num_label_ft, -1).index_copy_(1, lin_indices_3d[1:1+num_ind], torch.index_select(label.view(num_label_ft, -1), 1, lin_indices_2d[1:1+num_ind]))
@@ -147,14 +150,12 @@ class Projection(Function):
         # None. Thanks to the fact that additional trailing Nones are
         # ignored, the return statement is simple even when the function has
         # optional inputs.
-        grad_label = grad_output.clone()
+        #grad_output: [3, 64, 32, 32] or [128, 64, 32, 32]
         num_ft = grad_output.shape[0]
         lin_indices_3d, lin_indices_2d= ctx.saved_tensors
         h = ctx.h
         w = ctx.w
-        with torch.no_grad(): 
-            grad_label.resize_(num_ft, h, w)
+        grad_label = grad_output.new_zeros(num_ft, h, w)
         num_ind = lin_indices_3d.data[0]
         grad_label.data.view(num_ft, -1).index_copy_(1, lin_indices_2d.data[1:1+num_ind], torch.index_select(grad_output.data.contiguous().view(num_ft, -1), 1, lin_indices_3d.data[1:1+num_ind]))
-        #raw_input('sdflkj')
         return grad_label, None, None, None
