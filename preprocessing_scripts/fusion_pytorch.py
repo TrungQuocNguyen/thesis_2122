@@ -43,12 +43,12 @@ class TSDFVolume:
       torch.arange(0, self._vol_dim[1]),
       torch.arange(0, self._vol_dim[2]),
     )
-    self._vox_coords = torch.stack([xv.flatten(), yv.flatten(), zv.flatten()], dim=1).long().to(self.device)
+    self._vox_coords = torch.stack([xv.flatten(), yv.flatten(), zv.flatten()], dim=1).long().to(self.device) # size (vol_dim[0]*vol_dim[1]*vol_dim[2], 3)
 
     # Convert voxel coordinates to world coordinates
     self._world_c = self._vol_origin + (self._voxel_size * self._vox_coords)
     self._world_c = torch.cat([
-      self._world_c, torch.ones(len(self._world_c), 1, device=self.device)], dim=1)
+      self._world_c, torch.ones(len(self._world_c), 1, device=self.device)], dim=1) # size (vol_dim[0]*vol_dim[1]*vol_dim[2], 4)
 
     self.reset()
 
@@ -56,9 +56,9 @@ class TSDFVolume:
     print("[*] num voxels: {:,}".format(self._num_voxels))
 
   def reset(self):
-    self._tsdf_vol = torch.ones(*self._vol_dim).to(self.device)
-    self._weight_vol = torch.zeros(*self._vol_dim).to(self.device)
-    self._color_vol = torch.zeros(*self._vol_dim).to(self.device)
+    self._tsdf_vol = torch.ones(*self._vol_dim).to(self.device) # size (vol_dim[0], vol_dim[1], vol_dim[2])
+    self._weight_vol = torch.zeros(*self._vol_dim).to(self.device) # size (vol_dim[0], vol_dim[1], vol_dim[2])
+    self._color_vol = torch.zeros(*self._vol_dim).to(self.device) # size (vol_dim[0], vol_dim[1], vol_dim[2])
 
   def integrate(self, color_im, depth_im, cam_intr, cam_pose, obs_weight):
     """Integrate an RGB-D frame into the TSDF volume.
@@ -245,50 +245,64 @@ def integrate(
   im_h,
   im_w,
 ):
+  """Integrate an RGB-D frame into the TSDF volume.
+  Args: 
+    color_im (torch Tensor): An RGB image of shape (H, W, 3).
+    depth_im (torch Tensor): A depth image of shape (H, W).
+    cam_intr (torch Tensor): The camera intrinsics matrix of shape (3, 3).
+    cam_pose (torch Tensor): The camera pose (i.e. extrinsics) of shape (4, 4).
+    obs_weight (float): The weight to assign to the current observation.
+    world_c (torch Tensor): coordinates of each voxel in world frame, shape (vol_dim[0]*vol_dim[1]*vol_dim[2], 4) (homogeneous coordinates)
+    vox_coords (torch Tensor): coordinates of each voxel in grid frame, shape (vol_dim[0]*vol_dim[1]*vol_dim[2], 3)
+    weight_vol (torch Tensor): shape (vol_dim[0], vol_dim[1], vol_dim[2])
+    tsdf_vol (torch Tensor): shape (vol_dim[0], vol_dim[1], vol_dim[2])
+    color_vol (torch Tensor): shape (vol_dim[0], vol_dim[1], vol_dim[2])
+    sdf_trunc (float): 5 * _voxel_size, here sdf_trunc = 5*0.05 = 0.25
+  """
   # Fold RGB color image into a single channel image
-  color_im = torch.floor(color_im[..., 2]*256*256 + color_im[..., 1]*256 + color_im[..., 0])
+  color_im = torch.floor(color_im[..., 2]*256*256 + color_im[..., 1]*256 + color_im[..., 0]) # torch Tensor of shape [H,W] with values in 0...256x256x256
 
   # Convert world coordinates to camera coordinates
   world2cam = torch.inverse(cam_pose)
-  cam_c = torch.matmul(world2cam, world_c.transpose(1, 0)).transpose(1, 0).float()
+  cam_c = torch.matmul(world2cam, world_c.transpose(1, 0)).transpose(1, 0).float()  # shape (vol_dim[0]*vol_dim[1]*vol_dim[2], 4) (homogeneous coordinates)
 
   # Convert camera coordinates to pixel coordinates
   fx, fy = cam_intr[0, 0], cam_intr[1, 1]
   cx, cy = cam_intr[0, 2], cam_intr[1, 2]
-  pix_z = cam_c[:, 2]
-  pix_x = torch.round((cam_c[:, 0] * fx / cam_c[:, 2]) + cx).long()
-  pix_y = torch.round((cam_c[:, 1] * fy / cam_c[:, 2]) + cy).long()
+  pix_z = cam_c[:, 2] # shape (vol_dim[0]*vol_dim[1]*vol_dim[2])
+  pix_x = torch.round((cam_c[:, 0] * fx / cam_c[:, 2]) + cx).long() # shape (vol_dim[0]*vol_dim[1]*vol_dim[2])
+  pix_y = torch.round((cam_c[:, 1] * fy / cam_c[:, 2]) + cy).long() # shape (vol_dim[0]*vol_dim[1]*vol_dim[2])
 
   # Eliminate pixels outside view frustum
-  valid_pix = (pix_x >= 0) & (pix_x < im_w) & (pix_y >= 0) & (pix_y < im_h) & (pix_z > 0)
-  valid_vox_x = vox_coords[valid_pix, 0]
-  valid_vox_y = vox_coords[valid_pix, 1]
-  valid_vox_z = vox_coords[valid_pix, 2]
-  valid_pix_y = pix_y[valid_pix]
-  valid_pix_x = pix_x[valid_pix]
-  depth_val = depth_im[pix_y[valid_pix], pix_x[valid_pix]]
+  valid_pix = (pix_x >= 0) & (pix_x < im_w) & (pix_y >= 0) & (pix_y < im_h) & (pix_z > 0) # shape (vol_dim[0]*vol_dim[1]*vol_dim[2])
+  valid_vox_x = vox_coords[valid_pix, 0] # shape (n) n is number of valid voxel, values in 0...vol_dim[0]-1
+  valid_vox_y = vox_coords[valid_pix, 1] # shape (n) n is number of valid voxel, values in 0...vol_dim[1]-1
+  valid_vox_z = vox_coords[valid_pix, 2] # shape (n), values in 0...vol_dim[2]-1
+  valid_pix_y = pix_y[valid_pix] # shape (n), values in 0...im_h-1, can have same values as many voxels correspond to one pixel
+  valid_pix_x = pix_x[valid_pix] # shape (n), values in 0...im_w-1, can have same values as many voxels correspond to one pixel
+  depth_val = depth_im[pix_y[valid_pix], pix_x[valid_pix]] # shape (n), can have same values as many voxels correspond to one pixel
 
   # Integrate tsdf
   depth_diff = depth_val - pix_z[valid_pix]
   dist = torch.clamp(depth_diff / sdf_trunc, max=1)
   valid_pts = (depth_val > 0) & (depth_diff >= -sdf_trunc)
-  valid_vox_x = valid_vox_x[valid_pts]
-  valid_vox_y = valid_vox_y[valid_pts]
-  valid_vox_z = valid_vox_z[valid_pts]
-  valid_pix_y = valid_pix_y[valid_pts]
-  valid_pix_x = valid_pix_x[valid_pts]
-  valid_dist = dist[valid_pts]
-  w_old = weight_vol[valid_vox_x, valid_vox_y, valid_vox_z]
-  tsdf_vals = tsdf_vol[valid_vox_x, valid_vox_y, valid_vox_z]
-  w_new = w_old + obs_weight
+  valid_vox_x = valid_vox_x[valid_pts] # shape (k), k is number of voxel that has depth_val >0 and depth_diff >= -sdf_trunc
+  valid_vox_y = valid_vox_y[valid_pts] # shape (k)
+  valid_vox_z = valid_vox_z[valid_pts] # shape (k)
+  valid_pix_y = valid_pix_y[valid_pts] # shape (k)
+  valid_pix_x = valid_pix_x[valid_pts] # shape (k)
+  valid_dist = dist[valid_pts]  #only take voxels (and corresponding pixels) that has depth diff >= -sdf_trunc. After that, clamp the depth_diff of all voxels that have value depth_diff/sdf_trunc >1 to 1. 
+  w_old = weight_vol[valid_vox_x, valid_vox_y, valid_vox_z] # initially 0
+  tsdf_vals = tsdf_vol[valid_vox_x, valid_vox_y, valid_vox_z] # initially 1
+  w_new = w_old + obs_weight # 1
   tsdf_vol[valid_vox_x, valid_vox_y, valid_vox_z] = (w_old * tsdf_vals + obs_weight*valid_dist) / w_new
   weight_vol[valid_vox_x, valid_vox_y, valid_vox_z] = w_new
 
   # Integrate color
-  old_color = color_vol[valid_vox_x, valid_vox_y, valid_vox_z]
-  old_b = torch.floor(old_color / CONST_VAL)
-  old_g = torch.floor((old_color-old_b*CONST_VAL) / 256)
-  old_r = old_color - old_b*CONST_VAL - old_g*256
+  old_color = color_vol[valid_vox_x, valid_vox_y, valid_vox_z] # initially 0
+  old_b = torch.floor(old_color / CONST_VAL) # initially 0
+  old_g = torch.floor((old_color-old_b*CONST_VAL) / 256) # initially 0
+  old_r = old_color - old_b*CONST_VAL - old_g*256 # initially 0
   new_color = color_im[valid_pix_y, valid_pix_x]
   new_b = torch.floor(new_color / CONST_VAL)
   new_g = torch.floor((new_color - new_b*CONST_VAL) / 256)

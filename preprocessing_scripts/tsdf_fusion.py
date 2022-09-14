@@ -21,25 +21,24 @@ def main(args):
   # frustums in the dataset
   # ======================================================================================================== #
   print("Estimating voxel volume bounds...")
-  n_imgs = 1000
-  cam_intr = np.loadtxt("data/camera-intrinsics.txt", delimiter=' ')
+  n_imgs = 880+1
+  cam_intr = np.array([[289.8382, 0.0, 159.5616], [0.0, 290.1292, 119.5618], [0.0, 0.0, 1.0]])
   vol_bnds = np.zeros((3,2))
-  for i in range(n_imgs):
+  for i in range(0,n_imgs,10):
     # Read depth image and camera pose
-    depth_im = cv2.imread("data/frame-%06d.depth.png"%(i),-1).astype(float)
+    depth_im = cv2.imread("/mnt/raid/tnguyen/scannet_2d3d/scene0552_00/depth/" + str(i) + ".png",-1).astype(float)
     depth_im /= 1000.  # depth is saved in 16-bit PNG in millimeters
-    depth_im[depth_im == 65.535] = 0  # set invalid depth to 0 (specific to 7-scenes dataset)
-    cam_pose = np.loadtxt("data/frame-%06d.pose.txt"%(i))  # 4x4 rigid transformation matrix
+    cam_pose = np.loadtxt("/mnt/raid/tnguyen/scannet_2d3d/scene0552_00/pose/" + str(i) + ".txt")  # 4x4 rigid transformation matrix
 
     # Compute camera view frustum and extend convex hull
-    view_frust_pts = fusion.get_view_frustum(depth_im, cam_intr, cam_pose)
+    view_frust_pts = fusion.get_view_frustum(depth_im, cam_intr, cam_pose)  #np array of size (3,5) consists of 5 points, which form a pyramid with the top is optical center 
     vol_bnds[:,0] = np.minimum(vol_bnds[:,0], np.amin(view_frust_pts, axis=1))
     vol_bnds[:,1] = np.maximum(vol_bnds[:,1], np.amax(view_frust_pts, axis=1))
   # ======================================================================================================== #
 
   # Initialize voxel volume
   print("Initializing voxel volume...")
-  tsdf_vol = fusion.TSDFVolume(vol_bnds, 0.02, fusion.integrate)
+  tsdf_vol = fusion.TSDFVolume(vol_bnds, 0.05, fusion.integrate)
 
   # ======================================================================================================== #
   # Integrate
@@ -47,15 +46,14 @@ def main(args):
   # Loop through RGB-D images and fuse them together
   t0_elapse = time.time()
   times = []
-  for i in range(n_imgs):
+  for i in range(0,n_imgs,10):
     print("Fusing frame %d/%d"%(i+1, n_imgs))
 
     # Read RGB-D image and camera pose
-    color_image = cv2.cvtColor(cv2.imread("data/frame-%06d.color.jpg"%(i)), cv2.COLOR_BGR2RGB)
-    depth_im = cv2.imread("data/frame-%06d.depth.png"%(i),-1).astype(float)
-    depth_im /= 1000.
-    depth_im[depth_im == 65.535] = 0
-    cam_pose = np.loadtxt("data/frame-%06d.pose.txt"%(i))
+    color_image = cv2.cvtColor(cv2.imread("/mnt/raid/tnguyen/scannet_2d3d/scene0552_00/color/"+ str(i) + ".jpg"), cv2.COLOR_BGR2RGB)
+    depth_im = cv2.imread("/mnt/raid/tnguyen/scannet_2d3d/scene0552_00/depth/" + str(i) + ".png",-1).astype(float)
+    depth_im /= 1000.  # depth is saved in 16-bit PNG in millimeters
+    cam_pose = np.loadtxt("/mnt/raid/tnguyen/scannet_2d3d/scene0552_00/pose/" + str(i) + ".txt") 
 
     # Integrate observation into voxel volume (assume color aligned with depth)
     tic = time.time()
@@ -71,12 +69,12 @@ def main(args):
 
   # Extract pointcloud
   point_cloud = tsdf_vol.extract_point_cloud()
-  fusion.pcwrite("pc.ply", point_cloud)
+  fusion.pcwrite("/home/tnguyen/thesis_2122/pc.ply", point_cloud)
 
   # Get mesh from voxel volume and save to disk (can be viewed with Meshlab)
   print("Saving to mesh.ply...")
   verts, faces, norms, colors = tsdf_vol.extract_triangle_mesh()
-  fusion.meshwrite("mesh.ply", verts, faces, norms, colors)
+  fusion.meshwrite("/home/tnguyen/thesis_2122/mesh.ply", verts, faces, norms, colors)
 
 
 if __name__ == "__main__":
