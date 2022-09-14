@@ -18,7 +18,7 @@ from pathlib import Path
 import trimesh
 from datasets.scannet.common import load_ply
 
-def get_label_grid(input_grid, gt_vertices, gt_vtx_labels, rgb, voxel_size=None, method='nearest'):
+def get_label_grid(input_grid, gt_vertices, gt_vtx_labels,voxel_size=None, method='nearest', dist_thres=0.2):
     '''
     input_grid:  the input trimesh.VoxelGrid (l, h, b)
     gt_vertices: (n, 3) vertices of the GT mesh 
@@ -30,7 +30,6 @@ def get_label_grid(input_grid, gt_vertices, gt_vtx_labels, rgb, voxel_size=None,
     indices = input_grid.points_to_indices(centers)
     pairs = list(zip(centers, indices))
     label_grid = -np.ones_like(input_grid.matrix, dtype=np.int16)
-    rgb_grid = np.zeros(input_grid.matrix.shape + (3,), dtype=np.uint8)
 
     for center, ndx in tqdm(pairs, leave=False, desc='nearest_point'):
         if method == 'nearest':
@@ -39,8 +38,10 @@ def get_label_grid(input_grid, gt_vertices, gt_vtx_labels, rgb, voxel_size=None,
             # closest vertex
             closest_vtx_ndx = dist.argmin()
             # label of this vertex
-            voxel_label = gt_vtx_labels[closest_vtx_ndx]
-            voxel_rgb = rgb[closest_vtx_ndx]
+            if dist.min() < dist_thres: 
+                voxel_label = gt_vtx_labels[closest_vtx_ndx]
+            else: 
+                voxel_label = 0
         elif method == 'voting':
             # find indices all vertices within this voxel
             low, high = center - voxel_size, center + voxel_size
@@ -54,11 +55,9 @@ def get_label_grid(input_grid, gt_vertices, gt_vtx_labels, rgb, voxel_size=None,
                 voxel_label = None
         
         label_grid[ndx[0], ndx[1], ndx[2]] = voxel_label
-        rgb_grid[ndx[0], ndx[1], ndx[2]] = voxel_rgb
 
-    center_colors = rgb_grid[indices[:, 0], indices[:, 1], indices[:, 2]]
 
-    return label_grid, rgb_grid, center_colors
+    return label_grid
 
 def main(args):
     root = Path(args.scannet_dir)
@@ -77,7 +76,7 @@ def main(args):
         input_grid = input_mesh.voxelized(pitch=voxel_size) 
         
         # read GT mesh, get vertex coordinates and labels
-        coords, rgb, _ = load_ply(scan_dir / input_file)
+        coords, _, _ = load_ply(scan_dir / input_file)
 
         if args.no_label:
             # no labels, zeros
@@ -86,7 +85,7 @@ def main(args):
             # read coords and labels from GT file
             _, _, labels = load_ply(scan_dir / gt_file, read_label=True)
             # get label grid
-            label_grid, _, _ = get_label_grid(input_grid, coords, labels, rgb)
+            label_grid = get_label_grid(input_grid, coords, labels)
         
         x, y = input_grid.matrix, label_grid
         out_file = f'{scan_id}_occ_grid.pth'
