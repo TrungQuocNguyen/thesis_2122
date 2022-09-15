@@ -79,7 +79,7 @@ def main(args):
         input_grid = input_mesh.voxelized(pitch=voxel_size) 
         
         # read GT mesh, get vertex coordinates and labels
-        coords, _, _ = load_ply(scan_dir / input_file)
+        coords, _, _ = load_ply(label_scan_dir / gt_file)
 
         if args.no_label:
             # no labels, zeros
