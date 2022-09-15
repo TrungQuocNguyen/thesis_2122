@@ -160,6 +160,7 @@ def get_view_frustum(depth_im, cam_intr, cam_pose):
   im_h = depth_im.shape[0]
   im_w = depth_im.shape[1]
   max_depth = np.max(depth_im)
+  max_depth = np.minimum(max_depth, 4.0)
   view_frust_pts = np.array([
     (np.array([0,0,0,im_w,im_w])-cam_intr[0,2])*np.array([0,max_depth,max_depth,max_depth,max_depth])/cam_intr[0,0],
     (np.array([0,0,im_h,0,im_h])-cam_intr[1,2])*np.array([0,max_depth,max_depth,max_depth,max_depth])/cam_intr[1,1],
