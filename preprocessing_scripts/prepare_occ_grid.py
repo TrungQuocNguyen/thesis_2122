@@ -67,7 +67,6 @@ def main(args):
     print(f'Using voxel size: {voxel_size}')
     print(f'Read labels?: {not args.no_label}')
     for scan_id in tqdm(sorted(os.listdir(label_dir)), desc='scan'):
-        print("Processing scene %s" %(scan_id))
         scan_dir = root / scan_id  # /mnt/raid/tnguyen/scannet_2d3d/scene0000_00
         label_scan_dir = label_dir / scan_id # /mnt/raid/datasets/scannet/scans/scene0000_00
 
