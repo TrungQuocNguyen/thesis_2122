@@ -60,15 +60,18 @@ def get_label_grid(input_grid, gt_vertices, gt_vtx_labels,voxel_size=None, metho
     return label_grid
 
 def main(args):
-    root = Path(args.scannet_dir)
-    output = Path(args.output_dir)
+    root = Path(args.scannet_dir) # /mnt/raid/tnguyen/scannet_2d3d
+    label_dir = Path(args.label_dir) # /mnt/raid/datasets/scannet/scans
+    output = Path(args.output_dir) # /mnt/raid/tnguyen/scannet_2d3d
     voxel_size = args.voxel_size
     print(f'Using voxel size: {voxel_size}')
     print(f'Read labels?: {not args.no_label}')
-    for scan_id in tqdm(sorted(os.listdir(root)), desc='scan'):
-        scan_dir = root / scan_id
+    for scan_id in tqdm(sorted(os.listdir(label_dir)), desc='scan'):
+        print("Processing scene %s" %(scan_id))
+        scan_dir = root / scan_id  # /mnt/raid/tnguyen/scannet_2d3d/scene0000_00
+        label_scan_dir = label_dir / scan_id # /mnt/raid/datasets/scannet/scans/scene0000_00
 
-        input_file = f'{scan_id}_vh_clean_2.ply' 
+        input_file = f'{scan_id}.ply' 
         gt_file = f'{scan_id}_vh_clean_2.labels.ply' 
 
         # read input mesh and voxelize
@@ -83,12 +86,12 @@ def main(args):
             label_grid = np.zeros_like(input_grid.matrix, dtype=np.int16)
         else:
             # read coords and labels from GT file
-            _, _, labels = load_ply(scan_dir / gt_file, read_label=True)
+            _, _, labels = load_ply(label_scan_dir / gt_file, read_label=True)
             # get label grid
             label_grid = get_label_grid(input_grid, coords, labels)
         
         x, y = input_grid.matrix, label_grid
-        out_file = f'{scan_id}_occ_grid.pth'
+        out_file = f'{scan_id}_occ_grid_from_tsdf.pth'
 
         data = {'x': x, 'y': y, 'translation': input_grid.translation, 
                 'start_ndx': input_grid.translation / voxel_size}
@@ -100,13 +103,14 @@ if __name__ == '__main__':
     # params
     parser = argparse.ArgumentParser()
     # data paths
-    parser.add_argument('scannet_dir', help='path to scannet root dir file to read')
-    parser.add_argument('output_dir', help = 'path to output file ')
+    parser.add_argument('scannet_dir', help='path to scannet root dir (made from tsdf fusion) file to read') # in case of tsdf: /mnt/raid/tnguyen/scannet_2d3d, in case of GT mesh from ScanNet: /mnt/raid/datasets/scannet/scans
+    parser.add_argument('label_dir', help='path to label root dir file to read') # /mnt/raid/datasets/scannet/scans
+    parser.add_argument('output_dir', help = 'path to output file ') # /mnt/raid/tnguyen/scannet_2d3d
     parser.add_argument('--voxel-size', type=float, dest='voxel_size', default=0.05)
     parser.add_argument('--no-label', action='store_true', default=False, dest='no_label', 
                         help='No labels (test set)')
     
 
     args = parser.parse_args()
-
+    print(args)
     main(args)
