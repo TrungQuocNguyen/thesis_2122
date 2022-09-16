@@ -26,7 +26,8 @@ def get_label_grid(input_grid, gt_vertices, gt_vtx_labels,voxel_size=None, metho
 
     return: (l, h, b) array of labels for each grid cell
     '''
-    centers = input_grid.points
+    gt_vertices = gt_vertices.astype(np.float64)
+    centers = input_grid.points.astype(np.float64)
     indices = input_grid.points_to_indices(centers)
     pairs = list(zip(centers, indices))
     label_grid = -np.ones_like(input_grid.matrix, dtype=np.int16)
@@ -72,6 +73,11 @@ def main(args):
 
         input_file = f'{scan_id}.ply' 
         gt_file = f'{scan_id}_vh_clean_2.labels.ply' 
+        out_file = f'{scan_id}_occ_grid_from_tsdf.pth'
+        save_path = output / scan_id
+        if os.path.isfile(save_path / out_file): 
+            print('skipping because file already exists...')
+            continue
 
         # read input mesh and voxelize
         input_mesh = trimesh.load(scan_dir / input_file)
@@ -90,13 +96,10 @@ def main(args):
             label_grid = get_label_grid(input_grid, coords, labels)
         
         x, y = input_grid.matrix, label_grid
-        out_file = f'{scan_id}_occ_grid_from_tsdf.pth'
-
         data = {'x': x, 'y': y, 'translation': input_grid.translation, 
                 'start_ndx': input_grid.translation / voxel_size}
-        save_path = output / scan_id
         save_path.mkdir(parents = True, exist_ok = True)
-        torch.save(data, save_path / out_file)
+        torch.save(data, save_path / out_file)  #/mnt/raid/tnguyen/scannet_2d3d/scene0000_00/scene0000_00_occ_grid_from_tsdf.pth
 
 if __name__ == '__main__':
     # params
