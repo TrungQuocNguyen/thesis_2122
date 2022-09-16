@@ -321,7 +321,7 @@ def main(args):
             # full scene - save all to file, -1 as nearest image
             for ndx, nearest_imgs in enumerate(nearest_imgs_all):
                 # not full scene, and didnt get coverage -> discard
-                if (-1 in nearest_imgs) and (not args.full_scene): # even a subvolume with 1 image is also accepted 
+                if ((-1 in nearest_imgs) or len(nearest_imgs) != 5) and (not args.full_scene): # with training mode (aka not full_scene), each subvolume must be covered by exactly 5 images, no less. 
                     bad_subvols += 1
                 else:
                     # update the number found

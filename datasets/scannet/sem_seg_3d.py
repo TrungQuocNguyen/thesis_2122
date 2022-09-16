@@ -193,7 +193,7 @@ class ScanNetSemSegOccGrid(Dataset):
         '''
         paths = []
         for scan_id in self.scans:
-            path = self.root_dir / scan_id / f'{scan_id}_occ_grid.pth'
+            path = self.root_dir / scan_id / f'{scan_id}_occ_grid_from_tsdf.pth'
 
             if path.exists():
                 paths.append(path)
@@ -206,7 +206,7 @@ class ScanNetSemSegOccGrid(Dataset):
             return len(self.paths)
         return self.subvols_per_scene * len(self.paths)
 
-    def sample_subvol(self, x, y, return_start_ndx=False, min_occ=0.2, num_retries=20):
+    def sample_subvol(self, x, y, return_start_ndx=False, min_occ=0.2, num_retries=25):
         '''
         x, y - volumes of the same size
         return_start_ndx: return the start index of the subvol within the 
