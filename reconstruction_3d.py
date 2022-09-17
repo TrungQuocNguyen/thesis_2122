@@ -77,26 +77,13 @@ def train(cfg):
     #optimizer = optim.SGD(model_3d.parameters(), lr  = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"], momentum = 0.9, nesterov= False)
 
     #loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([44.5], device = 'cuda'))
-    criterion = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 8.0], device = 'cuda'), ignore_index = -100)
+    criterion = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 6.344], device = 'cuda'), ignore_index = -100)
     #loss = FixedCrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100, label_smoothing= 0.1)
     if cfg["trainer"]["add_figure_tensorboard"]: 
         assert cfg["model_2d"]["proxy_loss"], "add_figure_tensorboard is True but proxy_loss is False"
     if cfg["model_2d"]["proxy_loss"]: 
         assert cfg["use_2d_feat_input"], "proxy_loss is True but use_2d_feat_input is False"
     if cfg["use_2d_feat_input"]: 
-        #model_2d = ENet(cfg["model_2d"])
-        #checkpoint_2d_path = cfg["model_2d"]["load_path_2d"]
-        #assert checkpoint_2d_path, "load_path_2d is empty"
-        #assert os.path.isfile(checkpoint_2d_path), "path to 2D model checkpoint does not exist"
-        #model_2d_checkpoint = torch.load(checkpoint_2d_path)
-        #model_2d.load_state_dict(model_2d_checkpoint["state_dict"])
-        #for i, layer in enumerate(model_2d.children()): 
-        #    if i < 15: 
-        #        for param in layer.parameters():
-        #            param.requires_grad = False
-        
-        #model_2d.to(device)
-        #model_2d.eval() # set all layer to evaluation mode, and later set trainable layer to train mode 
         model_2d_fixed, model_2d_trainable, model_2d_classification = create_enet_for_3d(cfg["model_2d"]["num_classes"], cfg["model_2d"]["load_path_2d"])
         model_2d_fixed.to(device)
         model_2d_fixed.eval()

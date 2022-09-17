@@ -112,7 +112,6 @@ class Trainer3DReconstruction(BaseTrainer):
                     if self.proxy_loss: 
                         val_loss2d = 0.0
                     j = 0
-                    self.metric_3d.reset()
                     with torch.no_grad(): 
                         while j < self.accum_step:  
                             try: 
@@ -124,14 +123,12 @@ class Trainer3DReconstruction(BaseTrainer):
                             if jump_flag: 
                                 print('error in single validation batch, skipping the current batch...')
                                 continue
-                            temp1, temp2, tensorboard_preds= self._eval_step(blobs, True)
+                            temp1, temp2, tensorboard_preds= self._eval_step(blobs, False)
                             val_loss += temp1
                             if self.proxy_loss: 
                                 val_loss2d += temp2
                             j = j+1
-                        iou3d, _ = self.metric_3d.value()
                     #self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
-                    self.writer.add_scalar('step_IoU', iou3d[1], global_step= self.count)
                     self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = self.count)
                     print('[Iteration %d] VAL loss: %.3f' %(self.count, val_loss))
                     if self.proxy_loss: 
@@ -294,10 +291,6 @@ class Trainer3DReconstruction(BaseTrainer):
             _, preds = torch.max(preds, 1) # preds: [N, 32, 32, 64], cuda
             targets[targets == -100] = 2 #target: [N, 32, 32, 64], cuda
             self.metric_3d.add(preds.detach(), targets.detach())
-            if self.proxy_loss: 
-                _, predicted_images = torch.max(predicted_images, 1)
-                predicted_images = predicted_images.detach()
-                target_images = target_images.detach()
         return loss.item(), loss2d.item(), tensorboard_preds
     def _voxel_pixel_association(self, blobs): 
         batch_size = blobs['data'].shape[0]

@@ -84,10 +84,10 @@ class ScanNet2D3D(Dataset):
             filename = split + '_overfit_' + overfit + '_chunks'
         else: 
             if cfg['augmented_3d'] and split == 'train': 
-                filename = 'augmented_' + split + '_clean'
+                filename = 'augmented_' + split
             else: 
-                filename = split + '_clean'
-        self.file = h5py.File(os.path.join(cfg['root'], 'data_chunks', filename  + '.hdf5'), 'r')
+                filename = split
+        self.file = h5py.File(os.path.join(cfg['root'], 'data_chunks_from_tsdf', filename  + '.hdf5'), 'r')
     def __len__(self):
         return len(self.file['frames'])
 
