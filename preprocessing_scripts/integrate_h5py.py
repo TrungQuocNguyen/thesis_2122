@@ -3,12 +3,12 @@ import glob
 from pathlib import Path
 import numpy as np 
 def main(): 
-    n_samples = 4302
+    n_samples = 120100
     subvol_size = tuple([32, 32, 64])
     num_nearest_images = 5
     start_ndx = 0
-    split = 'val_scenes_non_overlapping'
-    with h5py.File('/mnt/raid/tnguyen/scannet_2d3d/data_chunks/' + split +'.hdf5', 'w') as outfile: 
+    split = 'train'
+    with h5py.File('/mnt/raid/tnguyen/scannet_2d3d/data_chunks_from_tsdf/' + split +'.hdf5', 'w') as outfile: 
         outfile.create_dataset('x', (n_samples,) + subvol_size, dtype=np.float32)
         # label subvolume
         outfile.create_dataset('y', (n_samples,) + subvol_size, dtype=np.int16)
@@ -21,7 +21,8 @@ def main():
         # indices of the corresponding frames
         outfile.create_dataset('frames', (n_samples, num_nearest_images), dtype=np.int16)
         
-        for name in sorted(glob.glob('/mnt/raid/tnguyen/scannet_2d3d/data_chunks/val_full_scene*')): 
+        for i in range(1,10+1): 
+            name = '/mnt/raid/tnguyen/scannet_2d3d/data_chunks_from_tsdf/train_chunks' + str(i) + '.hdf5'
             print(' reading file %s' %(Path(name).stem))
             file = h5py.File(name, 'r')
             num_chunks = len(file['scene_id'])
