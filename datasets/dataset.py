@@ -87,6 +87,8 @@ class ScanNet2D3D(Dataset):
                 filename = 'augmented_' + split
             else: 
                 filename = split
+                if split == 'val' and  not self.cfg["use_2d_feat_input"]: 
+                    filename = filename + '_RGB'
         self.file = h5py.File(os.path.join(cfg['root'], 'data_chunks_from_tsdf', filename  + '.hdf5'), 'r')
     def __len__(self):
         return len(self.file['frames'])
