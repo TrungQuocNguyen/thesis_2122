@@ -46,6 +46,9 @@ class Trainer3DReconstruction(BaseTrainer):
         else: 
             self.count = 0
             self.count_val = 0
+        print('Current train epoch is: %d'%(self.start_epoch))
+        print('Current val epoch step is: %d'%(self.count_val))
+        print('Current train step is %d'%(self.count))
         for epoch in range(self.start_epoch, self.epochs):
             self._train_epoch(epoch)
 
