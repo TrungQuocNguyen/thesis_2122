@@ -11,7 +11,7 @@ def main(args):
         subvol_size = f['x'][0].shape
         in_samples = len(f['x']) 
         for i in range(in_samples): 
-            if -1 not in f['frames'][i]: 
+            if (-1 not in f['frames'][i]) and ((f['x'][i]==1).sum()/(32*32*64) > 0.01): 
                 out_samples +=1
         print(f'In samples: {in_samples}, out samples: {out_samples}')
 
@@ -27,7 +27,7 @@ def main(args):
                 x, y, world_to_grid = f['x'][ndx], f['y'][ndx], f['world_to_grid'][ndx] 
                 # these wont change
                 scan_id, scene_id, frames = f['scan_id'][ndx], f['scene_id'][ndx], f['frames'][ndx]
-                if -1 not in f['frames'][ndx]: 
+                if (-1 not in f['frames'][ndx]) and ((f['x'][ndx]==1).sum()/(32*32*64) > 0.01): 
 
                     outf['scan_id'][index] = scan_id
                     outf['scene_id'][index] = scene_id
