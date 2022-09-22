@@ -46,8 +46,8 @@ def nn_correspondance_gpu(verts1, verts2):
 
 def main(): 
     file_path = '/mnt/raid/tnguyen/scannetv2_val.txt'
-    gt_path = '/mnt/raid/datasets/scannet/scans'
-    pred_path = '/home/tnguyen/thesis_2122/jupyter_notebook/predicted_scenes_2Dfeat_with_proxy_posweight8'
+    gt_path = '/mnt/raid/tnguyen/scannet_2d3d'
+    pred_path = '/home/tnguyen/thesis_2122/jupyter_notebook/from_TSDF/predicted_scenes_RGB'
     with open(file_path) as f:
         lines = f.readlines()
     cleanlines = [line.strip() for line in lines]
@@ -59,7 +59,7 @@ def main():
     fscore = []
     for scene_name in cleanlines: 
         print('Processing %s...'%(scene_name))
-        gt_file = os.path.join(gt_path, scene_name, scene_name + '_vh_clean_2.ply')
+        gt_file = os.path.join(gt_path, scene_name, scene_name + '.ply')
         pred_file = os.path.join(pred_path, scene_name + '.ply')
     
         v_gt, _ = pcu.load_mesh_vf(gt_file)
@@ -69,13 +69,13 @@ def main():
         v_sampled_pred, _, _ = pcu.downsample_point_cloud_voxel_grid(0.05, v_pred)
 
         ######################## Performing correspondence on GPU or CPU ########################################
-
+        print('Calculate correspondence between GT and pred...')
         v_sampled_gt = v_sampled_gt.astype(np.float64)
         v_sampled_pred = v_sampled_pred.astype(np.float64)
     
         dist1 = nn_correspondance(v_sampled_gt, v_sampled_pred)# accuracy, list of raw python number
         dist2 = nn_correspondance(v_sampled_pred, v_sampled_gt)# completeness, list of raw python number
-
+        print('Done.')
         ##########################################################################################################
 
         dist1 = np.array(dist1)

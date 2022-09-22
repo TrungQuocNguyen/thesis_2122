@@ -8,7 +8,7 @@ import fusion_pytorch as fusion
 def main(args):
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
-    scenes = sorted(os.listdir(args.images_path))[1:]  # don't count for 'data_chunks' folder which contains data for subvolume
+    scenes = sorted(os.listdir(args.images_path))[2:]  # don't count for 'data_chunks' folder which contains data for subvolume
     cam_intr = np.array([[289.8382, 0.0, 159.5616], [0.0, 290.1292, 119.5618], [0.0, 0.0, 1.0]]) # for [320, 240]
     print("Total number of scenes: %d"%(len(scenes)))
     for scene in scenes: 
@@ -28,7 +28,7 @@ def main(args):
             vol_bnds[:,0] = np.minimum(vol_bnds[:,0], np.amin(view_frust_pts, axis=1))
             vol_bnds[:,1] = np.maximum(vol_bnds[:,1], np.amax(view_frust_pts, axis=1))
 
-        tsdf_vol = fusion.TSDFVolume(vol_bnds, 0.05, fusion.integrate)
+        tsdf_vol = fusion.TSDFVolume(vol_bnds, 0.02, fusion.integrate)
 
         for i in range(0,n_imgs):
             print("Fusing frame %d/%d"%(i*10, n_imgs*10))
@@ -45,7 +45,10 @@ def main(args):
         
         print("Saving to mesh.ply...")
         verts, faces, norms, colors = tsdf_vol.extract_triangle_mesh()
-        fusion.meshwrite(os.path.join(args.output_path, scene, scene + ".ply"), verts, faces, norms, colors)
+        output_scene_path = os.path.join(args.output_path, scene)
+        if not os.path.isdir(output_scene_path):
+            os.makedirs(output_scene_path)
+        fusion.meshwrite(os.path.join(output_scene_path, scene + ".ply"), verts, faces, norms, colors)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
