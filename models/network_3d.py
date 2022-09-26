@@ -251,8 +251,7 @@ class ResNeXtUNet(nn.Module):
                 super(ResNeXtUNet, self).__init__()
                 self.num_images = num_images
                 self.cfg = cfg
-                num_feat = 128 if cfg["use_2d_feat_input"] else num_images*3 
-                self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
+                num_feat = 128*num_images if cfg["use_2d_feat_input"] else num_images*3 
                 self.conv1 = nn.Sequential(
                         nn.Conv3d(num_feat, 32, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)), 
                         nn.BatchNorm3d(32), 
@@ -481,127 +480,6 @@ class ConvNeXtUNet(nn.Module):
 
                 return out 
 
-'''class ConvNeXtUNet(nn.Module): 
-        def __init__(self, cfg, num_images): 
-                super(ConvNeXtUNet, self).__init__()
-                self.num_images = num_images
-                self.cfg = cfg
-                num_feat = 128 if cfg["use_2d_feat_input"] else num_images*3 
-                kernel_size = 7
-                self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
-                self.conv1 = nn.Sequential(
-                        nn.Conv3d(num_feat, 24, kernel_size=(3, 3, 3), stride=(1, 1, 1), padding=(1, 1, 1)), 
-                        nn.BatchNorm3d(24), 
-                        nn.GELU())
-                self.bottleneck1 = nn.Sequential(
-                        ConvNeXtBlock(24, 96, kernel_size = kernel_size), 
-                        ConvNeXtBlock(24, 96, kernel_size = kernel_size), 
-                        ConvNeXtBlock(24, 96, kernel_size = kernel_size))
-                self.conv2 = nn.Sequential(
-                        nn.Conv3d(24, 48, kernel_size=(2, 2, 2), stride=(2, 2, 2)), 
-                        nn.BatchNorm3d(48), 
-                        nn.GELU())
-                self.bottleneck2 = nn.Sequential(
-                        ConvNeXtBlock(48, 192, kernel_size = kernel_size), 
-                        ConvNeXtBlock(48, 192, kernel_size = kernel_size), 
-                        ConvNeXtBlock(48, 192, kernel_size = kernel_size))
-                self.conv3 = nn.Sequential(
-                        nn.Conv3d(48, 96, kernel_size=(2, 2, 2), stride=(2, 2, 2)), 
-                        nn.BatchNorm3d(96), 
-                        nn.GELU())
-                self.bottleneck3 = nn.Sequential(
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size), 
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size), 
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size), 
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size), 
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size), 
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size), 
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size), 
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size), 
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size))
-                self.conv4 = nn.Sequential(
-                        nn.Conv3d(96, 192, kernel_size=(2, 2, 2), stride=(2, 2, 2)), 
-                        nn.BatchNorm3d(192), 
-                        nn.GELU())
-                self.bottleneck4 = nn.Sequential(
-                        ConvNeXtBlock(192, 768, kernel_size = kernel_size), 
-                        ConvNeXtBlock(192, 768, kernel_size = kernel_size), 
-                        ConvNeXtBlock(192, 768, kernel_size = kernel_size))
-                #################################
-                self.upconv1 = nn.Sequential(
-                        nn.ConvTranspose3d(192, 96, kernel_size=(2, 2, 2), stride=(2, 2, 2)), 
-                        nn.BatchNorm3d(96), 
-                        nn.GELU())
-                self.up_bottleneck1 = nn.Sequential(
-                        ConvNeXtBlock(192, 768, kernel_size = kernel_size),
-                        ConvNeXtBlock(192, 768, kernel_size = kernel_size),
-                        ConvNeXtBlock(192, 768, kernel_size = kernel_size))
-                self.upconv2 = nn.Sequential(
-                        nn.ConvTranspose3d(192, 48, kernel_size=(2, 2, 2), stride=(2, 2, 2)), 
-                        nn.BatchNorm3d(48), 
-                        nn.GELU())
-                self.up_bottleneck2 = nn.Sequential(
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size), 
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size), 
-                        ConvNeXtBlock(96, 384, kernel_size = kernel_size))
-                self.upconv3 = nn.Sequential(
-                        nn.ConvTranspose3d(96, 24, kernel_size=(2, 2, 2), stride=(2, 2, 2)), 
-                        nn.BatchNorm3d(24), 
-                        nn.GELU())
-                self.up_bottleneck3 = nn.Sequential(
-                        ConvNeXtBlock(48, 192, kernel_size = kernel_size), 
-                        ConvNeXtBlock(48, 192, kernel_size = kernel_size), 
-                        ConvNeXtBlock(48, 192, kernel_size = kernel_size))
-                self.classifier = nn.Sequential(
-                        nn.Conv3d(48,24, kernel_size= (3,3,3), stride = (1,1,1), padding = (1,1,1)), 
-                        nn.BatchNorm3d(24), 
-                        nn.GELU(),
-                        nn.Conv3d(24, 2, kernel_size= (1,1,1), padding= 0))
-
-                initialize_weights(self)
-                nn.init.xavier_uniform_(self.classifier[-1].weight)
-        def forward(self, blobs, device): 
-                #blobs['data']: [batch_size, 32, 32, 64]
-                self.batch_size = blobs['data'].shape[0]
-                grid_shape = blobs['data'].shape[-3:] # [32, 32, 64]
-                _imageft = []
-                for i in range(self.batch_size):
-                        if self.cfg['use_2d_feat_input']: 
-                                imageft = blobs['feat_2d'][i*self.num_images: (i+1)*self.num_images] # [max_num_images, 128, 32, 41]
-                        else: 
-                                imageft = blobs['nearest_images']['images'][i].to(device)  #[max_num_images, 3, 256, 328]
-                        proj3d = blobs['proj_ind_3d'][i].to(device) # [max_num_images, 32*32*64 + 1]
-                        proj2d = blobs['proj_ind_2d'][i].to(device) #[max_num_images, 32*32*64 + 1]
-
-                        imageft = [Projection.apply(ft, ind3d, ind2d, grid_shape) for ft, ind3d, ind2d in zip(imageft, proj3d, proj2d)]
-                        if self.cfg['use_2d_feat_input']: 
-                                imageft = torch.stack(imageft, dim=4) # [128, 64, 32, 32, max_num_images] [C, z, y, x, max_num_images]
-                                sz = imageft.shape # [128, 64, 32, 32, max_num_images]
-                                imageft = imageft.view(sz[0], -1, sz[4]) # [128, 64*32*32, max_num_images]
-                                imageft = self.initial_pooling(imageft)  # [128, 64*32*32,1]
-                                imageft = imageft.view(sz[0], sz[1], sz[2], sz[3]) # [128, 64, 32, 32]
-                                _imageft.append(imageft.permute(0,3,2,1)) # list of [128, 32, 32, 64] [in order x, y, z]
-
-                        else: 
-                                imageft = torch.stack(imageft, dim=0) #[max_num_images, 3, 64, 32, 32] [max_num_images, C, z, y, x]
-                                sz = imageft.shape # [max_num_images, 3, 64, 32, 32]
-                                imageft = imageft.view(-1, sz[2], sz[3], sz[4]) # [max_num_images*3, 64, 32, 32]
-                                _imageft.append(imageft.permute(0,3,2,1)) # list of [max_num_images*3, 32, 32, 64][max_num_images*3, x,y,z]
-                _imageft = torch.stack(_imageft, dim = 0)  # [batch_size, (max_num_images*3) | 128, 32, 32, 64] [in order x,y,z]
-
-
-                ######################################################################
-                feat1 = self.bottleneck1(self.conv1(_imageft)) # [N, 24, 32, 32, 64]
-                feat2 = self.bottleneck2(self.conv2(feat1))  #[N, 48, 16, 16, 32]
-                feat3 = self.bottleneck3(self.conv3(feat2)) # [N, 96, 8,8,16]
-                feat4 = self.bottleneck4(self.conv4(feat3)) # [N, 192, 4,4,8]
-
-                out = self.upconv1(feat4) # [N, 96, 8,8,16]
-                out = self.upconv2(self.up_bottleneck1(torch.concat((out, feat3), dim = 1))) # [N, 48, 16, 16, 32]
-                out =self.upconv3(self.up_bottleneck2(torch.concat((out, feat2), dim = 1))) # [N, 24, 32, 32, 64]
-                out = self.classifier(self.up_bottleneck3(torch.concat((out, feat1), dim = 1))) # [N, 2, 32, 32, 64]
-
-                return out '''
 class SurfaceNet(nn.Module): 
         '''Network following SurfaceNet architecture, used for 3D reconstruction task'''
         def __init__(self, cfg, num_images): 
