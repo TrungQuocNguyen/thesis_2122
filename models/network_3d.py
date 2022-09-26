@@ -342,23 +342,13 @@ class ResNeXtUNet(nn.Module):
                         proj2d = blobs['proj_ind_2d'][i].to(device) #[max_num_images, 32*32*64 + 1]
 
                         imageft = [Projection.apply(ft, ind3d, ind2d, grid_shape) for ft, ind3d, ind2d in zip(imageft, proj3d, proj2d)]
-                        if self.cfg['use_2d_feat_input']: 
-                                imageft = torch.stack(imageft, dim=4) # [128, 64, 32, 32, max_num_images] [C, z, y, x, max_num_images]
-                                sz = imageft.shape # [128, 64, 32, 32, max_num_images]
-                                imageft = imageft.view(sz[0], -1, sz[4]) # [128, 64*32*32, max_num_images]
-                                imageft = self.initial_pooling(imageft)  # [128, 64*32*32,1]
-                                imageft = imageft.view(sz[0], sz[1], sz[2], sz[3]) # [128, 64, 32, 32]
-                                _imageft.append(imageft.permute(0,3,2,1)) # list of [128, 32, 32, 64] [in order x, y, z]
-
-                        else: 
-                                imageft = torch.stack(imageft, dim=0) #[max_num_images, 3, 64, 32, 32] [max_num_images, C, z, y, x]
-                                sz = imageft.shape # [max_num_images, 3, 64, 32, 32]
-                                imageft = imageft.view(-1, sz[2], sz[3], sz[4]) # [max_num_images*3, 64, 32, 32]
-                                _imageft.append(imageft.permute(0,3,2,1)) # list of [max_num_images*3, 32, 32, 64][max_num_images*3, x,y,z]
-                _imageft = torch.stack(_imageft, dim = 0)  # [batch_size, (max_num_images*3) | 128, 32, 32, 64] [in order x,y,z]
-
-
-                ######################################################################
+                      
+                        imageft = torch.stack(imageft, dim=0) #[max_num_images, 3 | 128, 64, 32, 32] [max_num_images, C, z, y, x]
+                        sz = imageft.shape # [max_num_images, 3 | 128, 64, 32, 32]
+                        imageft = imageft.view(-1, sz[2], sz[3], sz[4]) # [max_num_images*3 | max_num_images*128, 64, 32, 32]
+                        _imageft.append(imageft.permute(0,3,2,1)) # list of [max_num_images*3 | max_num_images*128, 32, 32, 64][max_num_images*3, x,y,z]
+                _imageft = torch.stack(_imageft, dim = 0)  # [batch_size, max_num_images*3 | max_num_images*128, 32, 32, 64] [in order x,y,z]
+                
                 feat1 = self.bottleneck1(self.conv1(_imageft)) # [N, 32, 32, 32, 64]
                 feat2 = self.bottleneck2(self.conv2(feat1))  #[N, 64, 16, 16, 32]
                 feat3 = self.bottleneck3(self.conv3(feat2)) # [N, 128, 8,8,16]
