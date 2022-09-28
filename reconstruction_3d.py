@@ -50,7 +50,7 @@ def train(cfg):
     print(device)
 
     dataset_train = ScanNet2D3D(cfg, split = 'train', overfit = cfg["overfit"])
-    dataset_val = ScanNet2D3D(cfg, split = 'val', overfit = cfg["overfit"])
+    dataset_val = ScanNet2D3D(cfg, split = 'val_scenes_non_overlapping', overfit = cfg["overfit"])
     num_images = len(dataset_train[0]["nearest_images"]["depths"]) # number of surrounding images of a chunk 
     if cfg["num_images"] < num_images: 
         num_images = cfg["num_images"]
@@ -77,7 +77,7 @@ def train(cfg):
     #optimizer = optim.SGD(model_3d.parameters(), lr  = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"], momentum = 0.9, nesterov= False)
 
     #loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([44.5], device = 'cuda'))
-    criterion = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 6.344], device = 'cuda'), ignore_index = -100)
+    criterion = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100)
     #loss = FixedCrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100, label_smoothing= 0.1)
     if cfg["trainer"]["add_figure_tensorboard"]: 
         assert cfg["model_2d"]["proxy_loss"], "add_figure_tensorboard is True but proxy_loss is False"
