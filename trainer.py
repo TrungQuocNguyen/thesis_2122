@@ -69,7 +69,7 @@ class Trainer3DReconstruction(BaseTrainer):
             blobs = batch.data
             self.model.train()
             if self.cfg['use_2d_feat_input']: 
-                self.model_2d_trainable.train()
+                self.model_2d_trainable.eval()
                 if self.proxy_loss: 
                     self.model_2d_classification.train()
             #blobs['data']: [N, 32, 32, 64] N: batch_size
