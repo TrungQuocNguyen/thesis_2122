@@ -8,7 +8,7 @@ def main():
     num_nearest_images = 5
     start_ndx = 0
     split = 'train'
-    with h5py.File('/mnt/raid/tnguyen/scannet_2d3d/data_chunks/' + split +'.hdf5', 'w') as outfile: 
+    with h5py.File('/mnt/raid/tnguyen/scannet_2d3d/data_chunks_from_tsdf/' + split +'.hdf5', 'w') as outfile: 
         outfile.create_dataset('x', (n_samples,) + subvol_size, dtype=np.float32)
         # label subvolume
         outfile.create_dataset('y', (n_samples,) + subvol_size, dtype=np.int16)
@@ -21,10 +21,12 @@ def main():
         # indices of the corresponding frames
         outfile.create_dataset('frames', (n_samples, num_nearest_images), dtype=np.int16)
         
-        for name in sorted(glob.glob('/mnt/raid/tnguyen/scannet_2d3d/data_chunks/' + split + '_chunks/' + split + '*'), key = lambda a: int(Path(a).stem[12:])): 
+        for i in range(1,10+1): 
+            name = '/mnt/raid/tnguyen/scannet_2d3d/data_chunks_from_tsdf/train_chunks' + str(i) + '.hdf5'
             print(' reading file %s' %(Path(name).stem))
             file = h5py.File(name, 'r')
             num_chunks = len(file['scene_id'])
+            print('length of this file is: ', num_chunks)
 
             outfile['frames'][start_ndx:start_ndx + num_chunks] = file['frames'][:]
             outfile['x'][start_ndx:start_ndx + num_chunks] = file['x'][:]

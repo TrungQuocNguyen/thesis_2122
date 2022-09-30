@@ -123,7 +123,7 @@ class Model3DResNeXt(nn.Module):
         super(Model3DResNeXt, self).__init__()
         self.num_images = num_images
         self.cfg = cfg
-        self.inplanes = 128 if cfg["use_2d_feat_input"] else num_images*3  # 15 or 128
+        self.inplanes = num_images*128 if cfg["use_2d_feat_input"] else num_images*3  # 15 or 128
         if cfg["use_2d_feat_input"]: 
             self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
         self.cardinality = 32
@@ -188,7 +188,7 @@ class Model3DResNeXt(nn.Module):
         #blobs['data']: [batch_size, 32, 32, 64]
         self.batch_size = blobs['data'].shape[0]
         grid_shape = blobs['data'].shape[-3:] # [32, 32, 64]
-        x = []
+        _imageft = []
         for i in range(self.batch_size):
             if self.cfg['use_2d_feat_input']: 
                 imageft = blobs['feat_2d'][i*self.num_images: (i+1)*self.num_images] # [max_num_images, 128, 32, 41]
@@ -198,20 +198,12 @@ class Model3DResNeXt(nn.Module):
             proj2d = blobs['proj_ind_2d'][i].to(device) #[max_num_images, 32*32*64 + 1]
 
             imageft = [Projection.apply(ft, ind3d, ind2d, grid_shape) for ft, ind3d, ind2d in zip(imageft, proj3d, proj2d)]
-            if self.cfg['use_2d_feat_input']: 
-                imageft = torch.stack(imageft, dim=4) # [128, 64, 32, 32, max_num_images] [C, z, y, x, max_num_images]
-                sz = imageft.shape # [128, 64, 32, 32, max_num_images]
-                imageft = imageft.view(sz[0], -1, sz[4]) # [128, 64*32*32, max_num_images]
-                imageft = self.initial_pooling(imageft)  # [128, 64*32*32,1]
-                imageft = imageft.view(sz[0], sz[1], sz[2], sz[3]) # [128, 64, 32, 32]
-                x.append(imageft.permute(0,3,2,1)) # list of [128, 32, 32, 64] [in order x, y, z]
-
-            else: 
-                imageft = torch.stack(imageft, dim=0) #[max_num_images, 3, 64, 32, 32] [max_num_images, C, z, y, x]
-                sz = imageft.shape # [max_num_images, 3, 64, 32, 32]
-                imageft = imageft.view(-1, sz[2], sz[3], sz[4]) # [max_num_images*3, 64, 32, 32]
-                x.append(imageft.permute(0,3,2,1)) # list of [max_num_images*3, 32, 32, 64][max_num_images*3, x,y,z]
-        x = torch.stack(x, dim = 0)  # [batch_size, (max_num_images*3) | 128, 32, 32, 64] [in order x,y,z]
+                      
+            imageft = torch.stack(imageft, dim=0) #[max_num_images, 3 | 128, 64, 32, 32] [max_num_images, C, z, y, x]
+            sz = imageft.shape # [max_num_images, 3 | 128, 64, 32, 32]
+            imageft = imageft.view(-1, sz[2], sz[3], sz[4]) # [max_num_images*3 | max_num_images*128, 64, 32, 32]
+            _imageft.append(imageft.permute(0,3,2,1)) # list of [max_num_images*3 | max_num_images*128, 32, 32, 64][max_num_images*3, x,y,z]
+        x = torch.stack(_imageft, dim = 0)  # [batch_size, max_num_images*3 | max_num_images*128, 32, 32, 64] [in order x,y,z]
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)

@@ -120,7 +120,7 @@ def continous_to_nyu40(img):
     
     return new_img
 
-def load_ply(path, read_label=False, read_colors=True):
+def load_ply(path, read_label=False, read_colors=False):
     ply_path = Path(path)
     plydata = PlyData.read(ply_path)
     

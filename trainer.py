@@ -25,8 +25,6 @@ class Trainer3DReconstruction(BaseTrainer):
                 print("Using proxy loss for 2D features")
                 self.eta = kwargs["eta"]
                 self.criterion2d = kwargs["criterion2d"]
-                self.metric_2d = kwargs["metric_2d"]
-                self.metric_2d_all_classes = kwargs["metric_2d_all_classes"]
                 self.add_figure_tensorboard = cfg["trainer"]["add_figure_tensorboard"]
                 if self.add_figure_tensorboard: 
                     self.mean = torch.tensor(self.cfg["color_mean"]).reshape(1,3,1,1)
@@ -48,6 +46,9 @@ class Trainer3DReconstruction(BaseTrainer):
         else: 
             self.count = 0
             self.count_val = 0
+        print('Current train epoch is: %d'%(self.start_epoch))
+        print('Current val epoch step is: %d'%(self.count_val))
+        print('Current train step is %d'%(self.count))
         for epoch in range(self.start_epoch, self.epochs):
             self._train_epoch(epoch)
 
@@ -68,7 +69,7 @@ class Trainer3DReconstruction(BaseTrainer):
             blobs = batch.data
             self.model.train()
             if self.cfg['use_2d_feat_input']: 
-                self.model_2d_trainable.train()
+                self.model_2d_trainable.eval()
                 if self.proxy_loss: 
                     self.model_2d_classification.train()
             #blobs['data']: [N, 32, 32, 64] N: batch_size
@@ -114,10 +115,6 @@ class Trainer3DReconstruction(BaseTrainer):
                     if self.proxy_loss: 
                         val_loss2d = 0.0
                     j = 0
-                    self.metric_3d.reset()
-                    if self.proxy_loss: 
-                        self.metric_2d.reset()
-                        self.metric_2d_all_classes.reset()
                     with torch.no_grad(): 
                         while j < self.accum_step:  
                             try: 
@@ -129,25 +126,18 @@ class Trainer3DReconstruction(BaseTrainer):
                             if jump_flag: 
                                 print('error in single validation batch, skipping the current batch...')
                                 continue
-                            temp1, temp2, tensorboard_preds= self._eval_step(blobs, True)
+                            temp1, temp2, tensorboard_preds= self._eval_step(blobs, False)
                             val_loss += temp1
                             if self.proxy_loss: 
                                 val_loss2d += temp2
                             j = j+1
-                        iou3d, _ = self.metric_3d.value()
-                        if self.proxy_loss: 
-                            _, miou_2d = self.metric_2d.value()
-                            _, miou_2d_all_classes = self.metric_2d_all_classes.value()
                     #self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
-                    self.writer.add_scalar('step_IoU', iou3d[1], global_step= self.count)
                     self.writer.add_scalars('step_loss', {'train_loss': train_loss.val, 'val_loss': val_loss}, global_step = self.count)
                     print('[Iteration %d] VAL loss: %.3f' %(self.count, val_loss))
                     if self.proxy_loss: 
                         self.writer.add_scalars('step_loss2d', {'train_loss': train_loss2d.val, 'val_loss': val_loss2d}, global_step = self.count)
                         self.writer.add_scalars('step_final_loss', {'train_loss': math.exp(-eta0)*train_loss.val + math.exp(-eta1)*train_loss2d.val + (eta0 + eta1)/2, 'val_loss': math.exp(-eta0)*val_loss + math.exp(-eta1)*val_loss2d + (eta0 + eta1)/2}, global_step = self.count)
                         print('[Iteration %d] VAL loss2d: %.3f' %(self.count, val_loss2d))
-                        self.writer.add_scalar('step_mIoU_2d', miou_2d, global_step= self.count )
-                        self.writer.add_scalar('step_mIoU_2d_all_classes', miou_2d_all_classes, global_step= self.count)
                         if self.add_figure_tensorboard: 
                             self.writer.add_figure('val predictions vs targets', plot_preds(blobs['nearest_images']['images'][0]*self.std+self.mean, blobs['nearest_images']['label_images'][0], tensorboard_preds), global_step = self.count)
 
@@ -304,12 +294,6 @@ class Trainer3DReconstruction(BaseTrainer):
             _, preds = torch.max(preds, 1) # preds: [N, 32, 32, 64], cuda
             targets[targets == -100] = 2 #target: [N, 32, 32, 64], cuda
             self.metric_3d.add(preds.detach(), targets.detach())
-            if self.proxy_loss: 
-                _, predicted_images = torch.max(predicted_images, 1)
-                predicted_images = predicted_images.detach()
-                target_images = target_images.detach()
-                self.metric_2d.add(predicted_images, target_images)
-                self.metric_2d_all_classes.add(predicted_images, target_images)
         return loss.item(), loss2d.item(), tensorboard_preds
     def _voxel_pixel_association(self, blobs): 
         batch_size = blobs['data'].shape[0]

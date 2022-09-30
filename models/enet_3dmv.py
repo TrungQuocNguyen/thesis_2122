@@ -593,6 +593,8 @@ def create_enet_for_3d(num_2d_classes, model_path):
     model_classifier = nn.Sequential(model[n-1])
     for param in model_fixed.parameters():
         param.requires_grad = False
+    for param in model_trainable.parameters():
+        param.requires_grad = False
     return model_fixed, model_trainable, model_classifier
 
 

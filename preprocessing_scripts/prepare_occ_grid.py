@@ -18,7 +18,7 @@ from pathlib import Path
 import trimesh
 from datasets.scannet.common import load_ply
 
-def get_label_grid(input_grid, gt_vertices, gt_vtx_labels, rgb, voxel_size=None, method='nearest'):
+def get_label_grid(input_grid, gt_vertices, gt_vtx_labels,voxel_size=None, method='nearest', dist_thres=0.2):
     '''
     input_grid:  the input trimesh.VoxelGrid (l, h, b)
     gt_vertices: (n, 3) vertices of the GT mesh 
@@ -26,11 +26,11 @@ def get_label_grid(input_grid, gt_vertices, gt_vtx_labels, rgb, voxel_size=None,
 
     return: (l, h, b) array of labels for each grid cell
     '''
-    centers = input_grid.points
+    gt_vertices = gt_vertices.astype(np.float64)
+    centers = input_grid.points.astype(np.float64)
     indices = input_grid.points_to_indices(centers)
     pairs = list(zip(centers, indices))
     label_grid = -np.ones_like(input_grid.matrix, dtype=np.int16)
-    rgb_grid = np.zeros(input_grid.matrix.shape + (3,), dtype=np.uint8)
 
     for center, ndx in tqdm(pairs, leave=False, desc='nearest_point'):
         if method == 'nearest':
@@ -39,8 +39,10 @@ def get_label_grid(input_grid, gt_vertices, gt_vtx_labels, rgb, voxel_size=None,
             # closest vertex
             closest_vtx_ndx = dist.argmin()
             # label of this vertex
-            voxel_label = gt_vtx_labels[closest_vtx_ndx]
-            voxel_rgb = rgb[closest_vtx_ndx]
+            if dist.min() < dist_thres: 
+                voxel_label = gt_vtx_labels[closest_vtx_ndx]
+            else: 
+                voxel_label = 0
         elif method == 'voting':
             # find indices all vertices within this voxel
             low, high = center - voxel_size, center + voxel_size
@@ -54,60 +56,63 @@ def get_label_grid(input_grid, gt_vertices, gt_vtx_labels, rgb, voxel_size=None,
                 voxel_label = None
         
         label_grid[ndx[0], ndx[1], ndx[2]] = voxel_label
-        rgb_grid[ndx[0], ndx[1], ndx[2]] = voxel_rgb
 
-    center_colors = rgb_grid[indices[:, 0], indices[:, 1], indices[:, 2]]
 
-    return label_grid, rgb_grid, center_colors
+    return label_grid
 
 def main(args):
-    root = Path(args.scannet_dir)
-    output = Path(args.output_dir)
+    root = Path(args.scannet_dir) # /mnt/raid/tnguyen/scannet_2d3d
+    label_dir = Path(args.label_dir) # /mnt/raid/datasets/scannet/scans
+    output = Path(args.output_dir) # /mnt/raid/tnguyen/scannet_2d3d
     voxel_size = args.voxel_size
     print(f'Using voxel size: {voxel_size}')
     print(f'Read labels?: {not args.no_label}')
-    for scan_id in tqdm(sorted(os.listdir(root)), desc='scan'):
-        scan_dir = root / scan_id
+    for scan_id in tqdm(sorted(os.listdir(label_dir)), desc='scan'):
+        scan_dir = root / scan_id  # /mnt/raid/tnguyen/scannet_2d3d/scene0000_00
+        label_scan_dir = label_dir / scan_id # /mnt/raid/datasets/scannet/scans/scene0000_00
 
-        input_file = f'{scan_id}_vh_clean_2.ply' 
+        input_file = f'{scan_id}.ply' 
         gt_file = f'{scan_id}_vh_clean_2.labels.ply' 
+        out_file = f'{scan_id}_occ_grid_from_tsdf.pth'
+        save_path = output / scan_id
+        if os.path.isfile(save_path / out_file): 
+            print('skipping because file already exists...')
+            continue
 
         # read input mesh and voxelize
         input_mesh = trimesh.load(scan_dir / input_file)
         input_grid = input_mesh.voxelized(pitch=voxel_size) 
         
         # read GT mesh, get vertex coordinates and labels
-        coords, rgb, _ = load_ply(scan_dir / input_file)
+        coords, _, _ = load_ply(label_scan_dir / gt_file)
 
         if args.no_label:
             # no labels, zeros
             label_grid = np.zeros_like(input_grid.matrix, dtype=np.int16)
         else:
             # read coords and labels from GT file
-            _, _, labels = load_ply(scan_dir / gt_file, read_label=True)
+            _, _, labels = load_ply(label_scan_dir / gt_file, read_label=True)
             # get label grid
-            label_grid, _, _ = get_label_grid(input_grid, coords, labels, rgb)
+            label_grid = get_label_grid(input_grid, coords, labels)
         
         x, y = input_grid.matrix, label_grid
-        out_file = f'{scan_id}_occ_grid.pth'
-
         data = {'x': x, 'y': y, 'translation': input_grid.translation, 
                 'start_ndx': input_grid.translation / voxel_size}
-        save_path = output / scan_id
         save_path.mkdir(parents = True, exist_ok = True)
-        torch.save(data, save_path / out_file)
+        torch.save(data, save_path / out_file)  #/mnt/raid/tnguyen/scannet_2d3d/scene0000_00/scene0000_00_occ_grid_from_tsdf.pth
 
 if __name__ == '__main__':
     # params
     parser = argparse.ArgumentParser()
     # data paths
-    parser.add_argument('scannet_dir', help='path to scannet root dir file to read')
-    parser.add_argument('output_dir', help = 'path to output file ')
+    parser.add_argument('scannet_dir', help='path to scannet root dir (made from tsdf fusion) file to read') # in case of tsdf: /mnt/raid/tnguyen/scannet_2d3d, in case of GT mesh from ScanNet: /mnt/raid/datasets/scannet/scans
+    parser.add_argument('label_dir', help='path to label root dir file to read') # /mnt/raid/datasets/scannet/scans
+    parser.add_argument('output_dir', help = 'path to output file ') # /mnt/raid/tnguyen/scannet_2d3d
     parser.add_argument('--voxel-size', type=float, dest='voxel_size', default=0.05)
     parser.add_argument('--no-label', action='store_true', default=False, dest='no_label', 
                         help='No labels (test set)')
     
 
     args = parser.parse_args()
-
+    print(args)
     main(args)

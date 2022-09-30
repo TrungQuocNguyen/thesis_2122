@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import CrossEntropyLoss
 import torch.optim as optim
-from models import Model3DResNeXt, SurfaceResNeXt, SurfaceNet
+from models import Model3DResNeXt, SurfaceResNeXt, SurfaceNet, ResNeXtUNet
 from models import ENet, create_enet_for_3d
 from datasets import ScanNet2D3D, get_dataloader
 from trainer import Trainer3DReconstruction
@@ -50,7 +50,7 @@ def train(cfg):
     print(device)
 
     dataset_train = ScanNet2D3D(cfg, split = 'train', overfit = cfg["overfit"])
-    dataset_val = ScanNet2D3D(cfg, split = 'val', overfit = cfg["overfit"])
+    dataset_val = ScanNet2D3D(cfg, split = 'val_scenes_non_overlapping', overfit = cfg["overfit"])
     num_images = len(dataset_train[0]["nearest_images"]["depths"]) # number of surrounding images of a chunk 
     if cfg["num_images"] < num_images: 
         num_images = cfg["num_images"]
@@ -65,8 +65,8 @@ def train(cfg):
     projector.update_intrinsic(intrinsic)
     
     #model_3d = ConvNeXtUNet(cfg, num_images)
-    #model_3d  = ResNeXtUNet(cfg, num_images)
-    model_3d  = SurfaceNet(cfg, num_images)
+    model_3d  = ResNeXtUNet(cfg, num_images)
+    #model_3d  = SurfaceNet(cfg, num_images)
     #model_3d  = SurfaceResNeXt(cfg, num_images)
     #model_3d = Model3DResNeXt(cfg, num_images)
     print_params(model_3d)
@@ -77,26 +77,13 @@ def train(cfg):
     #optimizer = optim.SGD(model_3d.parameters(), lr  = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"], momentum = 0.9, nesterov= False)
 
     #loss = nn.BCEWithLogitsLoss(pos_weight = torch.tensor([44.5], device = 'cuda'))
-    criterion = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 8.0], device = 'cuda'), ignore_index = -100)
+    criterion = nn.CrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100)
     #loss = FixedCrossEntropyLoss(weight = torch.tensor([1.0, 13.0], device = 'cuda'), ignore_index = -100, label_smoothing= 0.1)
     if cfg["trainer"]["add_figure_tensorboard"]: 
         assert cfg["model_2d"]["proxy_loss"], "add_figure_tensorboard is True but proxy_loss is False"
     if cfg["model_2d"]["proxy_loss"]: 
         assert cfg["use_2d_feat_input"], "proxy_loss is True but use_2d_feat_input is False"
     if cfg["use_2d_feat_input"]: 
-        #model_2d = ENet(cfg["model_2d"])
-        #checkpoint_2d_path = cfg["model_2d"]["load_path_2d"]
-        #assert checkpoint_2d_path, "load_path_2d is empty"
-        #assert os.path.isfile(checkpoint_2d_path), "path to 2D model checkpoint does not exist"
-        #model_2d_checkpoint = torch.load(checkpoint_2d_path)
-        #model_2d.load_state_dict(model_2d_checkpoint["state_dict"])
-        #for i, layer in enumerate(model_2d.children()): 
-        #    if i < 15: 
-        #        for param in layer.parameters():
-        #            param.requires_grad = False
-        
-        #model_2d.to(device)
-        #model_2d.eval() # set all layer to evaluation mode, and later set trainable layer to train mode 
         model_2d_fixed, model_2d_trainable, model_2d_classification = create_enet_for_3d(cfg["model_2d"]["num_classes"], cfg["model_2d"]["load_path_2d"])
         model_2d_fixed.to(device)
         model_2d_fixed.eval()
@@ -110,14 +97,10 @@ def train(cfg):
             criterion_weights = torch.tensor(SCANNET2D_CLASS_WEIGHTS, device = 'cuda')
             #criterion2d = nn.CrossEntropyLoss(ignore_index = cfg["model_2d"]["ignore_index"])
             criterion2d = FixedCrossEntropyLoss(weight= criterion_weights, ignore_index = cfg["model_2d"]["ignore_index"], label_smoothing= 0.1)
-            metric_2d = IoU(num_classes=cfg["model_2d"]["num_classes"], ignore_index=cfg["model_2d"]["IoU_ignore_index"])
-            metric_2d_all_classes = IoU(num_classes=cfg["model_2d"]["num_classes"], ignore_index= cfg["model_2d"]["ignore_index"])
         else: 
             eta = None
             optimizer2d = optim.AdamW([{'params': model_2d_trainable.parameters()}, {'params': model_2d_classification.parameters()}], lr = cfg["optimizer_2d"]["learning_rate"], weight_decay= cfg["optimizer_2d"]["weight_decay"])
             criterion2d = None
-            metric_2d = None
-            metric_2d_all_classes = None
     else: 
         eta = None
         model_2d_fixed = None
@@ -125,11 +108,9 @@ def train(cfg):
         model_2d_classification = None
         optimizer2d = None
         criterion2d = None
-        metric_2d = None
-        metric_2d_all_classes = None
     metric_3d = IoU(num_classes=3, ignore_index=2) # ground truth of 3D grid has 3 values:0, 1, -100. Converting label -100 to 2 we have 3 values: 0,1,2
 
-    trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, metric_3d, model_2d_fixed = model_2d_fixed, model_2d_trainable = model_2d_trainable, model_2d_classification = model_2d_classification, optimizer2d = optimizer2d, criterion2d = criterion2d, metric_2d = metric_2d, metric_2d_all_classes = metric_2d_all_classes, eta = eta)
+    trainer = Trainer3DReconstruction(cfg, model_3d, criterion, dataloader_train, dataloader_val, projector, optimizer, device, metric_3d, model_2d_fixed = model_2d_fixed, model_2d_trainable = model_2d_trainable, model_2d_classification = model_2d_classification, optimizer2d = optimizer2d, criterion2d = criterion2d, eta = eta)
     trainer.train()
     
 def test(cfg): 
