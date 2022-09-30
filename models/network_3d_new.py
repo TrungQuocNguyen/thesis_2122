@@ -123,7 +123,7 @@ class Model3DResNeXt(nn.Module):
         super(Model3DResNeXt, self).__init__()
         self.num_images = num_images
         self.cfg = cfg
-        self.inplanes = 128 if cfg["use_2d_feat_input"] else num_images*3  # 15 or 128
+        self.inplanes = num_images*128 if cfg["use_2d_feat_input"] else num_images*3  # 15 or 128
         if cfg["use_2d_feat_input"]: 
             self.initial_pooling = nn.MaxPool1d(kernel_size=num_images)
         self.cardinality = 32
