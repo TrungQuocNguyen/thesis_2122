@@ -1,5 +1,6 @@
 {
     "models": {
+        "architecture": "deeplabv3",
         "num_classes": 41,
         "in_channels": 3,
         "freeze_bn": false,
@@ -9,7 +10,7 @@
         "img_dir": "/mnt/raid/tnguyen/scannet_250k_images/trainset",
         "label_dir": "/mnt/raid/tnguyen/labels_250k_images/trainset",
         "img_size": [328, 256],
-        "label_img_size": [41, 32],
+        "label_img_size": [328, 256],
         "mean": [0.496342, 0.466664, 0.440796], 
         "std": [0.277856, 0.28623, 0.291129], 
         "augmentation": true, 
@@ -21,7 +22,7 @@
         "img_dir": "/mnt/raid/tnguyen/scannet_250k_images/valset",
         "label_dir": "/mnt/raid/tnguyen/labels_250k_images/valset", 
         "img_size": [328, 256],
-        "label_img_size": [41, 32],
+        "label_img_size": [328, 256],
         "mean": [0.496342, 0.466664, 0.440796], 
         "std": [0.277856, 0.28623, 0.291129], 
         "augmentation": false, 

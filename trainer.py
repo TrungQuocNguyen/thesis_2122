@@ -351,8 +351,6 @@ class TrainerENet(BaseTrainer):
                     self.writer.add_figure('train predictions vs targets', plot_preds(imgs*std+mean, targets, preds), global_step = len(self.train_loader)*epoch + i)
                 if not self.single_sample: 
                     self.model.eval()
-                    self.metric.reset()
-                    self.metric_all_classes.reset()
                     with torch.no_grad():
                         try: 
                             imgs, targets = next(val_iterator)
@@ -360,11 +358,7 @@ class TrainerENet(BaseTrainer):
                             val_iterator = iter(self.val_loader)
                             imgs, targets = next(val_iterator)
                         
-                        val_loss, val_preds = self._eval_step(imgs, targets, True)
-                    _, miou = self.metric.value()
-                    _, miou_all_classes = self.metric_all_classes.value()
-                    self.writer.add_scalar('val_mIoU', miou, global_step= len(self.train_loader)*epoch + i )
-                    self.writer.add_scalar('val_mIoU_all_classes', miou_all_classes, global_step= len(self.train_loader)*epoch + i )
+                        val_loss, val_preds = self._eval_step(imgs, targets, False)
                     self.writer.add_scalar('val_loss', val_loss, global_step= len(self.train_loader)*epoch + i)
                     print('[Iteration %d/%d] VAL loss: %.3f   ' %(len(self.train_loader)*epoch + i+1, len(self.train_loader)*self.epochs, val_loss))
                     if self.add_figure_tensorboard: 

@@ -1,6 +1,6 @@
 from datasets import ScanNet2D
 from torch.utils.data import DataLoader
-from models import ENet, create_enet
+from models import ENet, create_enet, DeepLabv3
 import torch.nn as nn
 import torch.optim as optim
 from trainer import TrainerENet
@@ -36,7 +36,17 @@ def main(config):
     val_loader = DataLoader(valset, batch_size = config["val_loader"]["batch_size"],shuffle = config["val_loader"]["shuffle"], num_workers = config["val_loader"]["num_workers"], pin_memory= True)
     
     #model = ENet(config["models"])
-    model = create_enet(config["models"]["num_classes"])
+    if config["models"]["architecture"] == "enet": 
+        model = create_enet(config["models"]["num_classes"])
+    elif config["models"]["architecture"] == "deeplabv3": 
+        model = DeepLabv3(config["models"]["num_classes"])
+        for param in model.dlv3.backbone.parameters():
+            param.requires_grad = False
+
+        for param in model.dlv3.backbone.layer4.parameters():
+            param.requires_grad = True
+    else: 
+        raise ValueError('This architecture is not valid. Please choose between enet and deeplabv3')
     print_params(model)
     model.to(device)
 

@@ -493,6 +493,7 @@ class ProjectionHelper():
         # where the depth mask was valid
         lin_indices_2d[1:1+num_indices] = \
             torch.index_select(valid_image_ind_lin, 0, torch.nonzero(depth_mask)[:,0])
+        #lin_indices_2d[1:1+num_indices] = valid_image_ind_lin
 
         return lin_indices_3d, lin_indices_2d
 
