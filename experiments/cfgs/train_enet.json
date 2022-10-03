@@ -32,7 +32,7 @@
     }, 
     "trainer": {
         "epochs": 1500,
-        "log_nth": 1,
+        "log_nth": 8,
         "single_sample" : false, 
         "add_figure_tensorboard": true,  
         "load_path": "", 
