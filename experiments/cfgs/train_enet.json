@@ -14,7 +14,7 @@
         "mean": [0.496342, 0.466664, 0.440796], 
         "std": [0.277856, 0.28623, 0.291129], 
         "augmentation": true, 
-        "batch_size": 64,
+        "batch_size": 32,
         "shuffle": true, 
         "num_workers": 8
     }, 
@@ -26,7 +26,7 @@
         "mean": [0.496342, 0.466664, 0.440796], 
         "std": [0.277856, 0.28623, 0.291129], 
         "augmentation": false, 
-        "batch_size": 64,
+        "batch_size": 32,
         "shuffle": true, 
         "num_workers": 8
     }, 

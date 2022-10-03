@@ -69,7 +69,8 @@ class DeepLabv3(nn.Module):
     pretrained deeplabv3 + finetune on our dataset
     '''
     def __init__(self, num_classes, cfg=None):
-        super().__init__(num_classes, cfg)
+        super(DeepLabv3, self).__init__()
+        self.num_classes = num_classes
 
         self.dlv3 = deeplabv3_resnet50(pretrained=True, progress=True)
         self.dlv3.aux_classifier = None

@@ -26,7 +26,7 @@ class FixedCrossEntropyLoss(nn.CrossEntropyLoss):
         loss = super().forward(input, target)
         return loss
 def main(config):     
-    print('Training ENet for 2D Semantic Segmentation task on ScanNet...')
+    print('Training neural network for 2D Semantic Segmentation task on ScanNet...')
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")   
 
     trainset = ScanNet2D(config["train_loader"])
@@ -37,8 +37,10 @@ def main(config):
     
     #model = ENet(config["models"])
     if config["models"]["architecture"] == "enet": 
+        print('Using ENet.')
         model = create_enet(config["models"]["num_classes"])
     elif config["models"]["architecture"] == "deeplabv3": 
+        print('Using DeepLabv3')
         model = DeepLabv3(config["models"]["num_classes"])
         for param in model.dlv3.backbone.parameters():
             param.requires_grad = False
