@@ -1,16 +1,17 @@
 {
     "models": {
+        "architecture": "deeplabv3",
         "num_classes": 41,
         "in_channels": 3,
         "freeze_bn": false,
         "freeze_dropout": false, 
-        "load_path": "/home/tnguyen/thesis_2122/saved/models/enet/enet_3dmv_augmented_32x41/model_best.pth.tar"
+        "load_path": "/home/tnguyen/thesis_2122/saved/models/enet/10-03_08-33/model_best.pth.tar"
     }, 
     "test_loader": {
         "img_dir": "/mnt/raid/tnguyen/scannet_250k_images/valset",
         "label_dir": "/mnt/raid/tnguyen/labels_250k_images/valset",
         "img_size": [328,256],
-        "label_img_size": [41, 32],
+        "label_img_size": [328, 256],
         "mean": [0.496342, 0.466664, 0.440796], 
         "std": [0.277856, 0.28623, 0.291129], 
         "augmentation": false, 

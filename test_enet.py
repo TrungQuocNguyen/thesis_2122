@@ -4,7 +4,7 @@ import os
 import torch
 from datasets import ScanNet2D
 from torch.utils.data import DataLoader
-from models import ENet, create_enet
+from models import ENet, create_enet, DeepLabv3
 import numpy as np 
 from metric.iou import IoU
 from utils.helpers import CLASS_LABELS
@@ -20,7 +20,14 @@ def main(config):
     test_loader = DataLoader(testset, batch_size = config["test_loader"]["batch_size"],shuffle = config["test_loader"]["shuffle"], num_workers = config["test_loader"]["num_workers"], pin_memory= True)
     #model = ENet(config["models"])
     
-    model = create_enet(config["models"]["num_classes"])
+
+    if config["models"]["architecture"] == "enet": 
+        print('Using ENet.')
+        model = create_enet(config["models"]["num_classes"])
+    elif config["models"]["architecture"] == "deeplabv3": 
+        print('Using DeepLabv3')
+        model = DeepLabv3(config["models"]["num_classes"])
+
     checkpoint = torch.load(config["models"]["load_path"])
     print("epoch %d: "%(checkpoint["epoch"]))
     model.load_state_dict(checkpoint["state_dict"])
