@@ -314,7 +314,7 @@ class Trainer3DReconstruction(BaseTrainer):
 
 class Trainer3DReconstruction_v2(BaseTrainer): 
     def __init__(self, cfg, model, loss, train_loader, val_loader, projector, optimizer, device, metric_3d,  **kwargs): 
-        super(Trainer3DReconstruction, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
+        super(Trainer3DReconstruction_v2, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
         self.metric_3d = metric_3d
         print("Using 2D features from DeepLabv3 as input")
         self.model_2d = kwargs["model_2d"]
