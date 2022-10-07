@@ -193,7 +193,7 @@ def main(cfg, args):
 
             origin = np.expand_dims(bbox_min.numpy(), 0)
             mesh = matrix_to_marching_cubes(volume, origin)
-            mesh.export(out_path + previous_scan + '.ply')
+            mesh.export(os.path.join(out_path, previous_scan + '.ply'))
             #reset everything for new scene
             previous_scan = current_scan
             print('Processing', current_scan) 
@@ -213,7 +213,7 @@ def main(cfg, args):
 
     origin = np.expand_dims(bbox_min.numpy(), 0)
     mesh = matrix_to_marching_cubes(volume, origin)
-    mesh.export(out_path + previous_scan + '.ply')
+    mesh.export(os.path.join(out_path, previous_scan + '.ply'))
 
 
 
