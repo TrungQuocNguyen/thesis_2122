@@ -166,7 +166,7 @@ def main(args):
         ############################### Benchmarking using 3D metrics #####################################
         if 'scannet' in args.gt_type: # evalute with GT from scannet: 
             gt_path = base_dir / args.gt_type / (scene_name + '_vh_clean_2.ply')
-        elif 'tsdf' in args.gt_type: # evaluate with GT from self-generated TSDF 
+        else: # evaluate with GT from self-generated TSDF 
             gt_path = base_dir / args.gt_type / (scene_name + '.ply')
 
         v_gt = o3d.io.read_point_cloud(str(gt_path))
