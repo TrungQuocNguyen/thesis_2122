@@ -169,11 +169,11 @@ def main(args):
         elif 'tsdf' in args.gt_type: # evaluate with GT from self-generated TSDF 
             gt_path = base_dir / args.gt_type / (scene_name + '.ply')
 
-        v_gt = o3d.io.read_point_cloud(gt_path)
+        v_gt = o3d.io.read_point_cloud(str(gt_path))
         v_sampled_gt = v_gt.voxel_down_sample(0.02)
         v_sampled_gt = np.asarray(v_sampled_gt.points)
 
-        v_pred = o3d.io.read_point_cloud(pred_path)
+        v_pred = o3d.io.read_point_cloud(str(pred_path))
         v_sampled_pred = v_pred.voxel_down_sample(0.02)
         v_sampled_pred = np.asarray(v_sampled_pred.points)
 
