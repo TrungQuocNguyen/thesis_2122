@@ -1,0 +1,55 @@
+{
+    "root": "/mnt/raid/tnguyen/scannet_2d3d",
+    "overfit": null,
+    "return_label_grid": true,
+    "augmented_3d": false,
+    "augmented_2d": false, 
+    "use_2d_feat_input": true, 
+    "depth_shape": [41, 32],
+    "image_shape": [328, 256],
+    "color_mean": [0.496342, 0.466664, 0.440796],
+    "color_std":  [0.277856, 0.28623, 0.291129],
+    "batch_size": 1,
+    "shuffle_train": false,
+    "shuffle_val": false,
+    "num_workers": 8,
+    "pin_memory": false,
+    "num_images": 5,
+    "proj_depth_min": 0.4,
+    "proj_depth_max": 4.0,
+    "subvol_size": [32, 32, 64],
+    "voxel_size": 0.05,
+    "intrinsic_image_width": 1296,
+    "intrinsic_image_height": 968,
+    "fx": 1170.187988,
+    "fy": 1170.187988,
+    "mx": 647.75,
+    "my": 483.75,
+    "model_2d": {
+        "num_classes": 41,
+        "in_channels": 3,
+        "proxy_loss": false, 
+        "load_path_2d": "/home/tnguyen/thesis_2122/saved/models/enet/10-03_08-33/checkpoint.pth.tar"
+    },
+    "model_3d":{
+        "use_pretrained_from_reconstruction": true, 
+        "num_classes": 41, 
+        "load_path_3d": "/home/tnguyen/thesis_2122/saved/models/3d_recon_2dfeat_input/10-09_19-56/model_best.pth.tar"
+    },
+    "trainer": {
+        "epochs": 10,
+        "log_nth": 8,
+        "val_check_interval": 1244,
+        "accumulation_step": 2, 
+        "single_sample" : false,
+        "add_figure_tensorboard": false,  
+        "load_path": "",
+        "plot_gradient": false, 
+        "resume_training": false, 
+        "training_type": "3D"
+    },
+    "optimizer": {
+        "learning_rate": 1e-3,
+        "weight_decay": 0
+    }
+}

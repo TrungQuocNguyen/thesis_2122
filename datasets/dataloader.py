@@ -20,7 +20,7 @@ class DataCollator(object):
             x = b['nearest_images']
             num_images = len(x['depths']) # 5
             max_num_images = cfg["num_images"]
-            if max_num_images < num_images and cfg["mode"] == 'train':
+            if max_num_images < num_images:
                 num_images = max_num_images
                 x['images'] = x['images'][:num_images]
                 x['depths'] = x['depths'][:num_images]
