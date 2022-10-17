@@ -4,47 +4,47 @@ import matplotlib.pyplot as plt
 import torch 
 import torch.nn as nn
 CLASS_IDS_TO_COLOR = {
-    0: [0,0,0],  # unannotated: black
-    1: [0, 128, 128],  # wall: teal
-    2: [255, 250, 250],  # floor: snow
-    3: [70, 130, 180], #cabinet:  steel blue
-    4: [240, 255, 240],  # bed: honeydew
-    5: [255, 99, 71],  # chair: tomato
-    6: [122, 113, 25], # sofa: earth brown
-    7: [64, 224, 208], # table: turquoise
-    8: [119, 136, 153],  # door: light slate gray
-    9: [240, 128, 128], # window: light coral
-    10: [255, 245, 238], # bookshelf: sea shell
-    11: [255, 160, 122],  # picture: light salmon
-    12: [250, 240, 230], # counter: linen  
-    13: [218, 165, 32], # blinds: golden rod 
-    14: [255, 218, 185], # desk: peach stuff 
-    15: [240, 230, 140], # shelves: khaki 
-    16: [188, 143, 143], # curtain: rosy brown  
-    17: [ 154, 205, 50], # dresser: yellow green 
-    18: [244, 164, 96], # pillow: sandy brown 
-    19: [124, 252, 0], # mirror: lawn green
-    20: [160, 82, 45], # floor mat: sienna 
-    21: [0,100,0],  # clothes: dark green
-    22: [250, 250, 210], # ceiling: light golden rod yellow 
-    23: [0, 255, 0], # books: lime 
-    24: [245, 222, 179], # refridgerator: wheat
-    25: [152, 251, 152], # television: pale green 
-    26: [245, 245, 220], # paper: beige 
-    27: [0, 255, 127],  # towel: spring green
-    28: [255, 182, 193], # shower curtain: light pink 
-    29: [60, 179, 113], # box: medium sea green 
-    30: [219, 112, 147], # whiteboard: pale violet red 
-    31: [139,0,0], # person: maroon
-    32: [255, 0, 255], # nightstand: magenta
-    33: [0, 255, 255], # toilet: cyan
-    34: [216, 191, 216], # sink: thistle
-    35: [255, 165, 0],  # lamp: orange
-    36: [153, 50, 204], # bathtub: dark orchid
-    37: [127, 255, 212],  #bag: aqua marine
-    38: [147, 112, 219], # otherstructure: medium purple
-    39: [178, 34, 34], # other furniture: firebrick 
-    40: [72, 61, 139], # otherprop: dark slate blue
+    0:[0, 0, 0], # first index=0
+    1:[174, 199, 232],  # 1.wall
+    2:[152, 223, 138],  # 2.floor
+    3:[31, 119, 180],   # 3.cabinet
+    4:[255, 187, 120],  # 4.bed
+    5:[188, 189, 34],   # 5.chair
+    6:[140, 86, 75],    # 6.sofa
+    7:[255, 152, 150],  # 7.table
+    8:[214, 39, 40],    # 8.door
+    9:[197, 176, 213],  # 9.window
+    10:[148, 103, 189],  # 10.bookshelf
+    11:[196, 156, 148],  # 11.picture
+    12:[23, 190, 207],   # 12.counter
+    13:[178, 76, 76],  
+    14:[247, 182, 210],  # 14.desk
+    15:[66, 188, 102], 
+    16:[219, 219, 141],  # 16.curtain
+    17:[140, 57, 197], 
+    18:[202, 185, 52], 
+    19:[51, 176, 203], 
+    20:[200, 54, 131], 
+    21:[92, 193, 61],  
+    22:[78, 71, 183],  
+    23:[172, 114, 82], 
+    24:[255, 127, 14],   # 24.refrigerator
+    25:[91, 163, 138], 
+    26:[153, 98, 156], 
+    27:[140, 153, 101],
+    28:[158, 218, 229],  # 28.shower curtain
+    29:[100, 125, 154],
+    30:[178, 127, 135],
+    31:[120, 185, 128],
+    32:[146, 111, 194],
+    33:[44, 160, 44],    # 33.toilet
+    34:[112, 128, 144],  # 34.sink
+    35:[96, 207, 209], 
+    36:[227, 119, 194],  # 36.bathtub
+    37:[213, 92, 176], 
+    38:[94, 106, 211], 
+    39:[82, 84, 163],    # 39.otherfurn
+    40:[100, 85, 144]    # last index=40
 
 }
 CLASS_LABELS = ['unannotated', 'wall', 'floor', 'cabinet', 'bed', 'chair', 'sofa', 'table', 'door', 'window', 'bookshelf', 'picture', 'counter', 'blinds', 'desk', 'shelves', 'curtain', 'dresser', 'pillow', 'mirror', 'floor mat', 
