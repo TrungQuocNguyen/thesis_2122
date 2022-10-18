@@ -65,8 +65,8 @@ def train(cfg):
     projector.update_intrinsic(intrinsic)
     
     #model_3d = ConvNeXtUNet(cfg, num_images)
-    model_3d  = ResNeXtUNet(cfg, num_images)
-    #model_3d  = SurfaceNet(cfg, num_images)
+    #model_3d  = ResNeXtUNet(cfg, num_images)
+    model_3d  = SurfaceNet(cfg, num_images)
     #model_3d  = SurfaceResNeXt(cfg, num_images)
     #model_3d = Model3DResNeXt(cfg, num_images)
     print_params(model_3d)

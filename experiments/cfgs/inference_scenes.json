@@ -1,5 +1,6 @@
 {
     "root": "/mnt/raid/tnguyen/scannet_2d3d",
+    "arch_3d": "surfacenet", 
     "overfit": null,
     "return_label_grid": true,
     "augmented_3d": false,
@@ -26,6 +27,7 @@
     "mx": 647.75,
     "my": 483.75,
     "model_2d": {
+        "arch_2d": "deeplabv3",
         "num_classes": 41,
         "in_channels": 3,
         "freeze_bn": false,
@@ -33,7 +35,7 @@
         "proxy_loss": true, 
         "ignore_index": 0, 
         "IoU_ignore_index": [0,13,15,17,18,19,20,21,22,23,25,26,27,29,30,31,32,35,37,38,40], 
-        "load_path_2d": ""
+        "load_path_2d": "/home/tnguyen/thesis_2122/saved/models/enet/10-03_08-33/model_best.pth.tar"
     },
     "trainer": {
         "epochs": 10,
@@ -42,7 +44,7 @@
         "accumulation_step": 1, 
         "single_sample" : false,
         "add_figure_tensorboard": false,  
-        "load_path": "",
+        "load_path": "/home/tnguyen/thesis_2122/saved/models/3d_recon_2dfeat_input/10-03_23-13/model_best.pth.tar",
         "plot_gradient": false, 
         "resume_training": false, 
         "training_type": "3D"

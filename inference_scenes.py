@@ -89,6 +89,8 @@ def main(cfg, args):
     mean = torch.tensor([0.496342, 0.466664, 0.440796]).reshape(1,3,1,1)
     std = torch.tensor([0.277856, 0.28623, 0.291129]).reshape(1,3,1,1)
     num_images = 5
+    recon_type = args.recon_type
+    assert recon_type in ['gt', 'rgb', '2dfeat'], 'Unknown reconstruction type, please choose between gt, rgb and 2dfeat.'
 
     dataset_val = ScanNet2D3D(cfg, split = 'val_scenes_non_overlapping', overfit = cfg["overfit"])
     dataloader_val = get_dataloader(cfg, dataset_val, batch_size= cfg["batch_size"], shuffle= cfg["shuffle_val"], num_workers=cfg["num_workers"], pin_memory= cfg["pin_memory"])
@@ -99,40 +101,42 @@ def main(cfg, args):
     projector = ProjectionHelper(intrinsic, cfg["proj_depth_min"], cfg["proj_depth_max"], cfg["depth_shape"], cfg["subvol_size"], cfg["voxel_size"]).to(device)
     projector.update_intrinsic(intrinsic)
 
-    if args.arch_3d == 'surfacenet': 
-        model_3d = SurfaceNet(cfg, num_images)
-    elif args.arch_3d == 'resnextunet': 
-        model_3d = ResNeXtUNet(cfg, num_images)
-    else: 
-        raise ValueError('3D architecture unknown. Please choose between surfacenet and resnextunet')
-    print_params(model_3d)
-    model_3d.to(device)
+    if recon_type != 'gt': 
+        if cfg["arch_3d"] == 'surfacenet': 
+            model_3d = SurfaceNet(cfg, num_images)
+        elif cfg["arch_3d"] == 'resnextunet': 
+            model_3d = ResNeXtUNet(cfg, num_images)
+        else: 
+            raise ValueError('3D architecture unknown. Please choose between surfacenet and resnextunet')
+        print_params(model_3d)
+        model_3d.to(device)
 
-    checkpoint = torch.load(args.checkpoint_3d)
-    print("Start checkpoint is: ", checkpoint["epoch"])
-    print("Step of train is: ", checkpoint["count"])
-    print("Step of val is: ", checkpoint["count_val"])
-    model_3d.load_state_dict(checkpoint["state_dict"])
+        checkpoint = torch.load(cfg["trainer"]["load_path"])
+        print("Start checkpoint is: ", checkpoint["epoch"])
+        print("Step of train is: ", checkpoint["count"])
+        print("Step of val is: ", checkpoint["count_val"])
+        model_3d.load_state_dict(checkpoint["state_dict"])
 
-    model_3d.eval()
+        model_3d.eval()
 
-    if args.arch_2d == 'enet': 
-        model_2d_fixed, model_2d_trainable, model_2d_classification = create_enet_for_3d(41, args.checkpoint_2d)
-        model_2d_fixed.to(device)
-        model_2d_fixed.eval()
-        model_2d_trainable.to(device)
-        model_2d_trainable.eval()
-        model_2d_classification.to(device)
-        model_2d_classification.eval()
-    elif args.arch_2d == 'deeplabv3': 
-        model_2d = DeepLabv3(cfg["model_2d"]["num_classes"])
-        model_2d.load_state_dict(torch.load(args.checkpoint_2d)["state_dict"])
-        for param in model_2d.parameters():
-            param.requires_grad = False
-        model_2d.to(device)
-        model_2d.eval()
-    else:
-        raise ValueError('2D architecture unknown. Please choose between enet and deeplabv3') 
+        if recon_type == '2dfeat': 
+            if cfg["model_2d"]["arch_2d"] == 'enet': 
+                model_2d_fixed, model_2d_trainable, model_2d_classification = create_enet_for_3d(41, cfg["model_2d"]["load_path_2d"])
+                model_2d_fixed.to(device)
+                model_2d_fixed.eval()
+                model_2d_trainable.to(device)
+                model_2d_trainable.eval()
+                model_2d_classification.to(device)
+                model_2d_classification.eval()
+            elif cfg["model_2d"]["arch_2d"] == 'deeplabv3': 
+                model_2d = DeepLabv3(cfg["model_2d"]["num_classes"])
+                model_2d.load_state_dict(torch.load(cfg["model_2d"]["load_path_2d"])["state_dict"])
+                for param in model_2d.parameters():
+                    param.requires_grad = False
+                model_2d.to(device)
+                model_2d.eval()
+            else:
+                raise ValueError('2D architecture unknown. Please choose between enet and deeplabv3') 
     
     out_path = args.output_path
     if not os.path.isdir(out_path):
@@ -145,41 +149,38 @@ def main(cfg, args):
     for i,sample in enumerate(dataloader_val):
         sample = sample.data
         current_scan = sample['scan_name'][0]
-
-        jump_flag = _voxel_pixel_association(sample, projector)
-        #covered_voxels = set()
-        #for i in range(5): 
-        #    num_ind = sample['proj_ind_3d'][0][i,0]
-        #    proj = set(sample['proj_ind_3d'][0][i,1:1+num_ind].tolist())
-        #    covered_voxels = covered_voxels.union(proj)
-        #if len(covered_voxels) < 500:
-        #    print('skipping this sample due to low coverage...') 
-        #    continue
-        if jump_flag:
-            print('error in validation batch, skipping the current sample...')
-            continue
         
-        with torch.no_grad(): 
-            rgb_images = sample['nearest_images']['images'][0].to(device) # [5, 3, 256, 328]
-            if args.arch_2d == 'enet': 
-                imageft = model_2d_fixed(rgb_images) 
-                imageft = model_2d_trainable(imageft) # [5,128, 32, 41]
-            elif args.arch_2d == 'deeplabv3': 
-                imageft = model_2d(rgb_images, return_features=True, return_preds=False)
-            else: 
-                raise ValueError('Unknown architecture. Please choose between enet and deeplabv3')
-            sample['feat_2d'] = imageft
+        if recon_type != 'gt':
+            jump_flag = _voxel_pixel_association(sample, projector)
+            if jump_flag:
+                print('error in validation batch, skipping the current sample...')
+                continue
+        
+            with torch.no_grad():
+                if recon_type == '2dfeat': 
+                    rgb_images = sample['nearest_images']['images'][0].to(device) # [5, 3, 256, 328]
+                    if cfg["model_2d"]["arch_2d"]== 'enet': 
+                        imageft = model_2d_fixed(rgb_images) 
+                        imageft = model_2d_trainable(imageft) # [5,128, 32, 41]
+                    elif cfg["model_2d"]["arch_2d"] == 'deeplabv3': 
+                        imageft = model_2d(rgb_images, return_features=True, return_preds=False)
+                    else: 
+                        raise ValueError('Unknown architecture. Please choose between enet and deeplabv3')
+                    sample['feat_2d'] = imageft
 
-            preds = model_3d(sample, device) #[N, 2, 32, 32, 64]
-            _, preds = torch.max(preds, 1) # preds: [N, 32, 32, 64], 
-        if preds.sum().item() == 0: # don't process volume grid with all 0 values. 
-            print('Discarding this subvolume because of all 0 values inside')
-            continue
-        preds = preds.squeeze().cpu().numpy() # [32, 32, 64]
+                preds = model_3d(sample, device) #[N, 2, 32, 32, 64]
+                _, preds = torch.max(preds, 1) # preds: [N, 32, 32, 64], 
+            if preds.sum().item() == 0: # don't process volume grid with all 0 values. 
+                print('Discarding this subvolume because of all 0 values inside')
+                continue
+            preds = preds.squeeze().cpu().numpy() # [32, 32, 64]
         ####################################################################################
         if current_scan == previous_scan: 
             coordinate_list.append(-sample['nearest_images']['world2grid'][0][0][:3, 3])  #list of tensors, each of size (3,)
-            subvolume_list.append(preds)
+            if recon_type == 'gt': 
+                subvolume_list.append(sample['data'].squeeze().numpy())
+            else: 
+                subvolume_list.append(preds)
         
         else:  
             volume_coords = torch.stack(coordinate_list) # torch tensor size (n,3), n is number of subvolume inside this scene
@@ -200,7 +201,10 @@ def main(cfg, args):
             subvolume_list = []
             coordinate_list = []
             coordinate_list.append(-sample['nearest_images']['world2grid'][0][0][:3, 3])  #list of tensors, each of size (3,)
-            subvolume_list.append(preds)
+            if recon_type == 'gt': 
+                subvolume_list.append(sample['data'].squeeze().numpy())
+            else: 
+                subvolume_list.append(preds)
     
     volume_coords = torch.stack(coordinate_list) # torch tensor size (n,3), n is number of subvolume inside this scene
     bbox_min = torch.min(volume_coords, 0)[0] # tensor size (3,)
@@ -223,10 +227,7 @@ if __name__ =='__main__':
     parser.add_argument('-c', '--config', default='experiments/cfgs/inference_scenes.json',type=str,
                         help='Path to the config file (default: inference_scenes.json)')
     parser.add_argument('--output_path', help = 'Path to output folder')
-    parser.add_argument('--arch_3d', help = 'Architecture of 3D model') # surfacenet
-    parser.add_argument('--checkpoint_3d', help = 'Path to 3D model') # '/home/tnguyen/thesis_2122/saved/models/3d_recon_2dfeat_input/10-03_23-13/model_best.pth.tar'
-    parser.add_argument('--arch_2d', help = 'Architecture of 2D model') # deeplabv3
-    parser.add_argument('--checkpoint_2d', help = 'Path to 2D model')
+    parser.add_argument('--recon_type', help = 'Type of reconstruction, 3 options: gt (for reconstructing GT mesh from subvolume), rgb (for rgb input) or 2dfeat (for 2d feature input)')
     args = parser.parse_args()
     cfg = json.load(open(args.config))
     main(cfg, args)

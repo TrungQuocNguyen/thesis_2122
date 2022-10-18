@@ -135,11 +135,36 @@ Open `experiments/cfgs/train_enet.json` and change `[train_loader][img_dir]` to 
   python train_enet.py
    ```
 ### Inference 
-Open `experiments/cfgs/test_enet.json`, change `img_dir` and `label_dir` as described above, and then point the `load_path` to a `.tar` file checkpoint in the checkpoint folder. Then run: 
+Open `experiments/cfgs/test_enet.json`, change `img_dir` and `label_dir` as described above, and fix the path of`load_path` to point it to a `.tar` file checkpoint of deeplab in the checkpoint folder (the folder `deeplab_v3` from download link ). Then run: 
 ```
   python test_enet.py
    ```
 ## 3D Scene Reconstruction
-### Training
-
+### Using RGB input 
+Open `experiments/cfgs/rgb_input_3d_recon.json` and point `root` to `SCANNET_2D3D` and run: 
+```
+  python reconstruction_3d.py --config experiments/cfgs/rgb_input_3d_recon.json
+   ```
+### Using ENet as 2D feature extractor 
+Open `experiments/cfgs/pretrained_feat_input_3d_recon.json`, point `root` to `SCANNET_2D3D` and point `load_path_2d` to `.tar` file in checkpoints folder and run: 
+```
+  python reconstruction_3d.py --config experiments/cfgs/pretrained_feat_input_3d_recon.json
+   ```
+### Using DeepLab as 2D feature extractor
+Change `pretrained_feat_input_3d_recon.json` as described above and run:
+``` 
+python reconstruction_3d_2dfeat_deeplabv3.py --config experiments/cfgs/pretrained_feat_input_3d_recon.json
+   ```
 ### Inference
+First we need create meshes for gt scenes by assembling all subvolumes of a scene into one volume grid and turn it to mesh. Open `experiments/cfgs/inference_scenes.json`, point `root` to `SCANNET_2D3D`.We save this results in `GT_SCENES`: 
+``` 
+python inference_scenes.py --output_path GT_SCENES --recon_type gt
+   ```
+To infer from model using RGB input, apart from above change in `experiments/cfgs/inference_scenes.json`, change `arch_3d` to `surfacenet`, `use_2d_feat_input` to `false`, `depth_shape` to `[328,256]`, point `load_path` to corresponding checkpoints in checkpoints folder. We save this result in `PRED_SCENES`. Notice that we must change `PRED_SCENES` every time we predict a new model. In short, results from each model must be saved in different folder for later evaluation.  Run: 
+``` 
+python inference_scenes.py --output_path PRED_SCENES --recon_type rgb
+   ```
+To infer from model using 2D feat input, change `arch_3d` to `surfacenet`, `arch_2d` to `deeplabv3` or `enet`, `use_2d_feat_input` to `true`, `depth_shape` to `[41,32]`, point `load_path_2d` to checkpoints of 2d model and `load_path` to checkpoints of 3d model:
+``` 
+python inference_scenes.py --output_path PRED_SCENES --recon_type 2dfeat
+   ```
