@@ -19,6 +19,12 @@ direction also holds.
 
 <img src="images/3d_semseg.png" width="1000"/>
 
+## Setup
+- Create a conda environment from [`environment.yaml`](environment.yml): 
+   ```
+   conda env create -f environment.yml
+   ```
+- Install [Open3D](http://www.open3d.org/docs/release/getting_started.html) through pip
 ## Dataset preparation
 Create a folder and download the full scannet dataset to it (e.g path to folder is `SCANNET_RAW`). The structure of dataset inside the folder should be as follows: 
 ```
@@ -156,7 +162,7 @@ Change `pretrained_feat_input_3d_recon.json` as described above and run:
 python reconstruction_3d_2dfeat_deeplabv3.py --config experiments/cfgs/pretrained_feat_input_3d_recon.json
    ```
 ### Inference
-First we need create meshes for gt scenes by assembling all subvolumes of a scene into one volume grid and turn it to mesh. Open `experiments/cfgs/inference_scenes.json`, point `root` to `SCANNET_2D3D`.We save this results in `GT_SCENES`: 
+First we need create meshes for gt scenes by assembling all subvolumes of a scene into one volume grid and turn it to mesh. Open `experiments/cfgs/inference_scenes.json`, point `root` to `SCANNET_2D3D`. We save this results in `GT_SCENES`: 
 ``` 
 python inference_scenes.py --output_path GT_SCENES --recon_type gt
    ```
@@ -168,3 +174,14 @@ To infer from model using 2D feat input, change `arch_3d` to `surfacenet`, `arch
 ``` 
 python inference_scenes.py --output_path PRED_SCENES --recon_type 2dfeat
    ```
+### Evaluation
+We evalute the predicted mesh in `PRED_SCENES` against the ground truth mesh in `GT_SCENES` by running:
+ ``` 
+python evaluate.py --scene_list [path to scannetv2_val.txt which includes scene%04d_%02d in each line] --pred_dir PRED_SCENES --gt_dir GT_SCENES --data2d_dir SCANNET_2D3D
+   ```
+
+| Model | Acc |Comp3D | Prec | Recal | F-score | AbsRel |AbsDiff | SqRel | RMSE | δ < 1.25 |δ< 1.25² |δ < 1.25³ | Comp2D |
+|:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|
+| RGB | 0.208| 0.03 | 0.561 |0.810  |0.657  |0.099 | 0.187 | 0.06 | 0.327 | 0.870 | 0.935| 0.965| 0.982|
+| 2Dfeat (ENet) | 0.183| 0.031| 0.567| 0.796 | 0.658 | 0.095| 0.179| 0.055| 0.316 | 0.879 | 0.941| 0.968| 0.983|
+| 2Dfeat (DeepLab) | 0.104| 0.029| 0.655| 0.824 | 0.727 | 0.091| 0.170| 0.05| 0.299 |0.889  |0.947 | 0.972| 0.980|

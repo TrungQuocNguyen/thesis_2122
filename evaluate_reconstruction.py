@@ -154,20 +154,21 @@ def main(args):
 
     depth_shape = [328, 256]
     intrinsics = make_intrinsic(308.7996, 309.4712, 163.5631, 127.5659)  #intrinsic camera for image size [328, 256]
-    base_dir = Path(args.base_dir)
-    file_path = base_dir / 'scannetv2_val.txt'
+    #################################
+    file_path = args.scene_list
+    pred_dir = Path(args.pred_dir)
+    gt_dir = Path(args.gt_dir)
+    data2d_dir = Path(args.data2d_dir)
+    ###############################
     with open(file_path) as f:
         lines = f.readlines()
     cleanlines = [line.strip() for line in lines]
     for scene_name in cleanlines: #loop over each scene
         print('Processing %s...'%(scene_name))
         renderer = Renderer()
-        pred_path = base_dir / args.model_type / (scene_name + '.ply')
+        pred_path = pred_dir / (scene_name + '.ply')
         ############################### Benchmarking using 3D metrics #####################################
-        if 'scannet' in args.gt_type: # evalute with GT from scannet: 
-            gt_path = base_dir / args.gt_type / (scene_name + '_vh_clean_2.ply')
-        else: # evaluate with GT from self-generated TSDF 
-            gt_path = base_dir / args.gt_type / (scene_name + '.ply')
+        gt_path = gt_dir / (scene_name + '.ply')
 
         v_gt = o3d.io.read_point_cloud(str(gt_path))
         v_sampled_gt = v_gt.voxel_down_sample(0.02)
@@ -199,7 +200,7 @@ def main(args):
 
         mesh = trimesh.load(pred_path, process=False)
         mesh_opengl = renderer.mesh_opengl(mesh)
-        scan_dir = base_dir / 'RGB_images' / scene_name
+        scan_dir = data2d_dir / scene_name
         depth_dir = scan_dir / 'depth'
         pose_dir  = scan_dir / 'pose'
 
@@ -233,9 +234,11 @@ def main(args):
 
 if __name__ =='__main__': 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--base_dir', help='Path to folder containing GT and predicted mesh (contain everything)') # /home/trung/test_inference_whole_scenes/from_ScanNet_GT
-    parser.add_argument('--gt_type', help='type of ground truth to evaluate, choose between: gt_from_scannet (Evaluate from GT of ScanNet) or gt_from_tsdf (Evaluate from GT of TSDF fusion)') #  gt_from_scannet
-    parser.add_argument('--model_type', help='type of model to evaluate') #  predicted_scenes_RGB_pos8
+    
+    parser.add_argument('--scene_list', help = 'Path to scannetv2_val.txt') #scannetv2_val.txt
+    parser.add_argument('--pred_dir', help = 'Path prediction directory') #predicted_scenes_RGB_pos13
+    parser.add_argument('--gt_dir', help = 'Path ground truth directory') # gt_scenes
+    parser.add_argument('--data2d_dir', help = 'Path to scannet_2d3d directory') # scannet_2d3d
 
     args = parser.parse_args()
     print(args)
