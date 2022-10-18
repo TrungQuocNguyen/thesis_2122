@@ -78,7 +78,7 @@ We then proceed with the mesh voxelization. :
 ```
 python preprocessing_scripts/prepare_occ_grid.py (SCANNET_RAW for option 1 or SCANNET_2D3D for option 2) SCANNET_RAW SCANNET_2D3D --use-tsdf(for option 2)
    ```
-Open `experiments/cfgs/backproj_prep.yml` and change `root` to `SCANNET_2D3D`, and also `label_file`, `train_list` and `val_list`. The following code randomly samples subvolumes and store them in `.hdf5` file in folder `data_chunks` under `SCANNET_2D3D`. For training: 
+Open [experiments/cfgs/backproj_prep.yml](experiments/cfgs/backproj_prep.yml) and change `root` to `SCANNET_2D3D`, and also `label_file`, `train_list` and `val_list`. The following code randomly samples subvolumes and store them in `.hdf5` file in folder `data_chunks` under `SCANNET_2D3D`. For training: 
 ```
 python preprocessing_scripts/prep_backproj_data.py experiments/cfgs/backproj_prep.yml train SCANNET_2D3D/data_chunks/train_clean.hdf5 --multiproc --gpu
    ```
@@ -136,12 +136,12 @@ Inside the repository, create a folder `saved` to store all the checkpoints and 
 We provide checkpoints for inference in all of our tasks: please download it [here](https://drive.google.com/drive/folders/1FAaTPPILL89fg4zKAhgrMrK0qfPVRlVI?usp=sharing) and place it accordingly under `saved/models` folder as described above. For example, place folder `3d_recon_deeplab` in the downloaded folder under `3d_recon_2dfeat_input`
 ## 2D Semantic Segmentation 
 ### Training
-Open `experiments/cfgs/train_enet.json` and change `[train_loader][img_dir]` to `scannet_250k_images/trainset`, `[train_loader][label_dir]` to `label_250k_images/trainset`, change the same with `[val_loader]`. Then run the following: 
+Open [experiments/cfgs/train_enet.json](experiments/cfgs/train_enet.json) and change `[train_loader][img_dir]` to `scannet_250k_images/trainset`, `[train_loader][label_dir]` to `label_250k_images/trainset`, change the same with `[val_loader]`. Then run the following: 
 ```
   python train_enet.py
    ```
 ### Inference 
-Open `experiments/cfgs/test_enet.json`, change `img_dir` and `label_dir` as described above, and fix the path of`load_path` to point it to a `.tar` file checkpoint of deeplab in the checkpoint folder (the folder `deeplab_v3` from download link ). Then run: 
+Open [experiments/cfgs/test_enet.json](experiments/cfgs/test_enet.json), change `img_dir` and `label_dir` as described above, and fix the path of`load_path` to point it to a `.tar` file checkpoint of deeplab in the checkpoint folder (the folder `deeplab_v3` from download link ). Then run: 
 ```
   python test_enet.py
    ```
@@ -151,26 +151,26 @@ Open `experiments/cfgs/test_enet.json`, change `img_dir` and `label_dir` as desc
 | DeepLabv3| **0.781**| **0.843**| **0.534**| **0.753** | **0.646** | **0.617** |**0.667** |**0.569** | **0.493** | **0.583** |0.342 | **0.452** |**0.541** | **0.484**| **0.584** | **0.538**| **0.835** | **0.603** | **0.766**| **0.448**| **0.604** |
 ## 3D Scene Reconstruction
 ### Using RGB input 
-Open `experiments/cfgs/rgb_input_3d_recon.json` and point `root` to `SCANNET_2D3D` and run: 
+Open [experiments/cfgs/rgb_input_3d_recon.json](experiments/cfgs/rgb_input_3d_recon.json) and point `root` to `SCANNET_2D3D` and run: 
 ```
   python reconstruction_3d.py --config experiments/cfgs/rgb_input_3d_recon.json
    ```
 ### Using ENet as 2D feature extractor 
-Open `experiments/cfgs/pretrained_feat_input_3d_recon.json`, point `root` to `SCANNET_2D3D` and point `load_path_2d` to `.tar` file in checkpoints folder and run: 
+Open [experiments/cfgs/pretrained_feat_input_3d_recon.json](experiments/cfgs/pretrained_feat_input_3d_recon.json), point `root` to `SCANNET_2D3D` and point `load_path_2d` to `.tar` file in checkpoints folder and run: 
 ```
   python reconstruction_3d.py --config experiments/cfgs/pretrained_feat_input_3d_recon.json
    ```
 ### Using DeepLab as 2D feature extractor
-Change `pretrained_feat_input_3d_recon.json` as described above and run:
+Change [pretrained_feat_input_3d_recon.json](experiments/cfgs/pretrained_feat_input_3d_recon.json) as described above and run:
 ``` 
 python reconstruction_3d_2dfeat_deeplabv3.py --config experiments/cfgs/pretrained_feat_input_3d_recon.json
    ```
 ### Inference
-First we need create meshes for gt scenes by assembling all subvolumes of a scene into one volume grid and turn it to mesh. Open `experiments/cfgs/inference_scenes.json`, point `root` to `SCANNET_2D3D`. We save this results in `GT_SCENES`: 
+First we need create meshes for gt scenes by assembling all subvolumes of a scene into one volume grid and turn it to mesh. Open [experiments/cfgs/inference_scenes.json](experiments/cfgs/inference_scenes.json), point `root` to `SCANNET_2D3D`. We save this results in `GT_SCENES`: 
 ``` 
 python inference_scenes.py --output_path GT_SCENES --recon_type gt
    ```
-To infer from model using RGB input, apart from above change in `experiments/cfgs/inference_scenes.json`, change `arch_3d` to `surfacenet`, `use_2d_feat_input` to `false`, `depth_shape` to `[328,256]`, point `load_path` to corresponding checkpoints in checkpoints folder. We save this result in `PRED_SCENES`. Notice that we must change `PRED_SCENES` every time we predict a new model. In short, results from each model must be saved in different folder for later evaluation.  Run: 
+To infer from model using RGB input, apart from above change in [experiments/cfgs/inference_scenes.json](experiments/cfgs/inference_scenes.json), change `arch_3d` to `surfacenet`, `use_2d_feat_input` to `false`, `depth_shape` to `[328,256]`, point `load_path` to corresponding checkpoints in checkpoints folder. We save this result in `PRED_SCENES`. Notice that we must change `PRED_SCENES` every time we predict a new model. In short, results from each model must be saved in different folder for later evaluation.  Run: 
 ``` 
 python inference_scenes.py --output_path PRED_SCENES --recon_type rgb
    ```
@@ -192,12 +192,12 @@ python evaluate.py --scene_list [path to scannetv2_val.txt which includes scene%
 
 ## 3D Scene Semantic Segmentation
 ### Training
-Open `segmentation_3d.json`, point `root` to `SCANNET_2D3D` and change `load_path_2d` to checkpoint of DeepLab. For training from scratch (i.e not use pretrained model from reconstruction task), set `use_pretrained_from_reconstruction` to `false`. For finetuning 3D segmentation model from reconstruction, set `use_pretrained_from_reconstruction` to `true` and additionally change `load_path_3d` to checkpoint of trained 3D reconstruction model. Then run: 
+Open [experiments/cfgs/segmentation_3d.json](experiments/cfgs/segmentation_3d.json), point `root` to `SCANNET_2D3D` and change `load_path_2d` to checkpoint of DeepLab. For training from scratch (i.e not use pretrained model from reconstruction task), set `use_pretrained_from_reconstruction` to `false`. For finetuning 3D segmentation model from reconstruction, set `use_pretrained_from_reconstruction` to `true` and additionally change `load_path_3d` to checkpoint of trained 3D reconstruction model. Then run: 
  ``` 
 python segmentation_3d.py 
    ```
 ### Inference
-Similar as above, we need to create segmented meshes for ground truth scenes by assembling all subvolumes of a scene into one volume grid and turn it to mesh. Open `inference_scenes_segmentation.json`, change `root` to `SCANNET_2D3D`. We save the results to `GT_SEGMENTATION` by running: 
+Similar as above, we need to create segmented meshes for ground truth scenes by assembling all subvolumes of a scene into one volume grid and turn it to mesh. Open [experiments/cfgs/inference_scenes_segmentation.json](experiments/cfgs/inference_scenes_segmentation.json), change `root` to `SCANNET_2D3D`. We save the results to `GT_SEGMENTATION` by running: 
  ``` 
 python inference_scenes_segmentation.py --output_path GT_SEGMENTATION --recon_type gt
    ```
