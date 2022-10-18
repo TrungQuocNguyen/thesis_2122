@@ -8,7 +8,7 @@ import fusion_pytorch as fusion
 def main(args):
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
-    scenes = sorted(os.listdir(args.images_path))[2:]  # don't count for 'data_chunks' folder which contains data for subvolume
+    scenes = sorted(os.listdir(args.images_path))  # don't count for 'data_chunks' folder which contains data for subvolume
     cam_intr = np.array([[289.8382, 0.0, 159.5616], [0.0, 290.1292, 119.5618], [0.0, 0.0, 1.0]]) # for [320, 240]
     print("Total number of scenes: %d"%(len(scenes)))
     for scene in scenes: 
