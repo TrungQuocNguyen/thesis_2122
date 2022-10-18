@@ -145,6 +145,10 @@ Open `experiments/cfgs/test_enet.json`, change `img_dir` and `label_dir` as desc
 ```
   python test_enet.py
    ```
+   | Model |wall |floor | cab | bed | chair | sofa |table| door | wind | bkshf |pic |counter | desk | curt |fridg| show | toil | sink |bath |other | mIoU |
+|:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|
+| ENet | 0.74| 0.787 | 0.470 | 0.641 | 0.504| 0.492 | 0.560 | 0.474 | 0.419 | 0.502 | 0.401| 0.322 |  0.449| 0.375| 0.510 | 0.468| 0.719 | 0.506 | 0.641 | 0.296| 0.514|
+| DeepLabv3| 0.781| 0.843| 0.534| 0.753 | 0.646 | 0.617 |0.667 |0.569 | 0.493 | 0.583 |0.342 | 0.452 |0.541 | 0.484| 0.584 | 0.538| 0.835 | 0.603 | 0.766| 0.448| 0.604 |
 ## 3D Scene Reconstruction
 ### Using RGB input 
 Open `experiments/cfgs/rgb_input_3d_recon.json` and point `root` to `SCANNET_2D3D` and run: 
@@ -185,3 +189,28 @@ python evaluate.py --scene_list [path to scannetv2_val.txt which includes scene%
 | RGB | 0.208| 0.03 | 0.561 |0.810  |0.657  |0.099 | 0.187 | 0.06 | 0.327 | 0.870 | 0.935| 0.965| 0.982|
 | 2Dfeat (ENet) | 0.183| 0.031| 0.567| 0.796 | 0.658 | 0.095| 0.179| 0.055| 0.316 | 0.879 | 0.941| 0.968| **0.983**|
 | 2Dfeat (DeepLab) | **0.104**| **0.029**| **0.655**| **0.824** | **0.727** | **0.091**| **0.170**| **0.05**| **0.299** |**0.889**  |**0.947** | **0.972**| 0.980|
+
+## 3D Scene Semantic Segmentation
+### Training
+Open `segmentation_3d.json`, point `root` to `SCANNET_2D3D` and change `load_path_2d` to checkpoint of DeepLab. For training from scratch (i.e not use pretrained model from reconstruction task), set `use_pretrained_from_reconstruction` to `false`. For finetuning 3D segmentation model from reconstruction, set `use_pretrained_from_reconstruction` to `true` and additionally change `load_path_3d` to checkpoint of trained 3D reconstruction model. Then run: 
+ ``` 
+python segmentation_3d.py 
+   ```
+### Inference
+Similar as above, we need to create segmented meshes for ground truth scenes by assembling all subvolumes of a scene into one volume grid and turn it to mesh. Open `inference_scenes_segmentation.json`, change `root` to `SCANNET_2D3D`. We save the results to `GT_SEGMENTATION` by running: 
+ ``` 
+python inference_scenes_segmentation.py --output_path GT_SEGMENTATION --recon_type gt
+   ```
+To infer segmented mesh from model, we additionally set `load_path_2d` to checkpoint of DeepLab and `load_path_3d` to checkpoint of a 3d segmentation model that we train earlier. Save it to `PRED_SEGMENTATION` by running: 
+   ```
+python inference_scenes_segmentation.py --output_path PRED_SEGMENTATION --recon_type 2dfeat
+   ```
+### Transfer label from predicted mesh to GT mesh and run evaluation
+Since predicted mesh and GT mesh not only have different class labels, but also different mesh structures. To evaluate the quality of segmentation of predicted mesh, it is necessary to transfer predicted label to mesh structure of GT. The following code create a `transfer` folder inside `PRED_SEGMENTATION` which stores the transfered mesh and evaluate prediction in terms of mean Intersection over Union (mIoU): 
+   ```
+python evaluate_segmentation.py --gt_path GT_SEGMENTATION --pred_path PRED_SEGMENTATION --scene_list [path to scannetv2_val.txt]
+   ```
+| Model |wall |floor | cab | bed | chair | sofa |table| door | wind | bkshf |pic |counter | desk | curt |fridg| show | toil | sink |bath |other | mIoU |
+|:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|
+| Train from scratch | **0.821**| 0.928 |**0.570** | 0.772 | 0.800| 0.678 | 0.658 | 0.579| **0.545** | 0.771 | 0.265| 0.487 | 0.554| 0.562| 0.507 | 0.458| 0.845 | **0.604** | 0.728| **0.550**| 0.634|
+| Finetune from reconstruction| 0.819| **0.931**| 0.567| **0.793** | **0.814** | **0.699** | **0.693**| **0.581**| 0.534 | **0.790** | **0.273**| **0.507**| **0.568**| **0.572**| **0.537** | **0.523**| **0.846** | 0.602 | **0.740**| 0.549| **0.647** |
