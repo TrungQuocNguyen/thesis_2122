@@ -20,3 +20,36 @@ direction also holds.
 <img src="images/3d_semseg.png" width="600"/>
 
 ## Dataset preparation
+Create a folder `/home/scannet/scans` and download the full scannet dataset to it. The structure of dataset should be as follows: 
+```
+   scans/
+   |--scene0000_00/
+      |--scene0000_00.sens
+      |--label-filt/
+         |--[framenum].png
+             ⋮
+   |--scene0000_01/
+      ⋮
+   ```
+Run the following line of code to extract color, depth frames, camera pose and label images to folder `scannet_2d3d`:
+```
+python preprocessing_scripts/prepare_2d_data.py --scannet_path /home/scannet/scans --output_path scannet_2d3d --export_label_images --frame_skip 10 --label_map_file [path to scannetv2-labels.combined.tsv]
+```
+The structure of folder `scannet_2d3d` should now be: 
+```
+   |--scene0000_00/
+      |--color/
+         |--[framenum].jpg
+             ⋮
+      |--depth/
+         |--[framenum].png
+             ⋮
+      |--pose/
+         |--[framenum].txt
+             ⋮
+      |--label/
+         |--[framenum].png
+             ⋮
+   |--scene0000_01/
+      ⋮
+   ```

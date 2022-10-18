@@ -70,10 +70,12 @@ def main(args):
     for scan_id in tqdm(sorted(os.listdir(label_dir)), desc='scan'):
         scan_dir = root / scan_id  # /mnt/raid/tnguyen/scannet_2d3d/scene0000_00
         label_scan_dir = label_dir / scan_id # /mnt/raid/datasets/scannet/scans/scene0000_00
-
-        input_file = f'{scan_id}.ply' 
+        if args.use_tsdf: 
+            input_file = f'{scan_id}.ply'
+        else: 
+            input_file = f'{scan_id}_vh_clean_2.ply' 
         gt_file = f'{scan_id}_vh_clean_2.labels.ply' 
-        out_file = f'{scan_id}_occ_grid_from_tsdf.pth'
+        out_file = f'{scan_id}_occ_grid.pth'
         save_path = output / scan_id
         if os.path.isfile(save_path / out_file): 
             print('skipping because file already exists...')
@@ -111,7 +113,8 @@ if __name__ == '__main__':
     parser.add_argument('--voxel-size', type=float, dest='voxel_size', default=0.05)
     parser.add_argument('--no-label', action='store_true', default=False, dest='no_label', 
                         help='No labels (test set)')
-    
+    parser.add_argument('--use-tsdf', action='store_true', default=False, dest='use_tsdf', 
+                        help='Use self-generated tsdf instead of GT from ScanNet')
 
     args = parser.parse_args()
     print(args)

@@ -19,7 +19,7 @@ data:
     num_nearest_images: 5
     # size of the image that "looks" at the voxel
     # width, height
-    img_size: [41, 32]
+    img_size: [328, 256]
     # skip RGB frames
     frame_skip: 1
     # side of each voxel in meters
