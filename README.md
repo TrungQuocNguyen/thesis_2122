@@ -14,10 +14,10 @@ network without using the feature extractor. In the second experiment, we finetu
 reconstruction net to scene segmentation task and check if the influence in the opposite
 direction also holds.
 
-<img src="images/3d_recon.png" width="600"/>
+<img src="images/3d_recon.png" width="1000"/>
 
 
-<img src="images/3d_semseg.png" width="600"/>
+<img src="images/3d_semseg.png" width="1000"/>
 
 ## Dataset preparation
 Create a folder and download the full scannet dataset to it (e.g path to folder is `SCANNET_RAW`). The structure of dataset inside the folder should be as follows: 
