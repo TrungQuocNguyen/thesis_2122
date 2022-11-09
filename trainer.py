@@ -61,7 +61,7 @@ class Trainer3DReconstruction(BaseTrainer):
 
         val_iterator = iter(self.val_loader)
 
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none = True)
         if self.cfg["use_2d_feat_input"]:
             self.optimizer2d.zero_grad()
         count_jump_flag_train = 0
@@ -207,7 +207,7 @@ class Trainer3DReconstruction(BaseTrainer):
             if self.plot_gradient: 
                 self.plot_grad_flow('model_3d', self.model.named_parameters(), self.count+1)
             self.optimizer.step()
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none = True)
             if self.cfg['use_2d_feat_input']: 
                 if self.plot_gradient: 
                     self.plot_grad_flow('model_2d_trainable', self.model_2d_trainable.named_parameters(), self.count+1)
@@ -343,7 +343,7 @@ class Trainer3DReconstruction_v2(BaseTrainer):
         loss_sum = 0.0
         val_iterator = iter(self.val_loader)
 
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none = True)
         count_jump_flag_train = 0
         for batch_idx, batch in enumerate(self.train_loader, 0):
             blobs = batch.data
@@ -420,7 +420,7 @@ class Trainer3DReconstruction_v2(BaseTrainer):
 
         if (batch_idx+1) % self.accum_step == 0: 
             self.optimizer.step()
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none = True)
 
         return loss.item()
 
@@ -515,7 +515,7 @@ class Trainer3DSegmentation(BaseTrainer):
         loss_sum = 0.0
         val_iterator = iter(self.val_loader)
 
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none = True)
         count_jump_flag_train = 0
         for batch_idx, batch in enumerate(self.train_loader, 0):
             blobs = batch.data
@@ -598,7 +598,7 @@ class Trainer3DSegmentation(BaseTrainer):
 
         if (batch_idx+1) % self.accum_step == 0: 
             self.optimizer.step()
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none = True)
 
         return loss.item()
 
@@ -724,7 +724,7 @@ class TrainerENet(BaseTrainer):
     def _train_step(self, imgs, targets): 
         imgs = imgs.to(self.device) # (N, 3, H,W)
         targets = targets.to(self.device) # (N, H, W)
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none = True)
         outputs = self.model(imgs) # (N, C, H, W)
         loss = self.criterion(outputs, targets)
         loss.backward()
