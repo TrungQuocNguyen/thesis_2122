@@ -29,8 +29,6 @@ class BaseTrainer:
             self.start_epoch = self.checkpoint["epoch"]
             self.model.load_state_dict(self.checkpoint["state_dict"])
             self.optimizer.load_state_dict(self.checkpoint["optimizer"])
-            for g in self.optimizer.param_groups:
-                g['lr'] = self.cfg["optimizer"]["learning_rate"] 
             self.dir_name = os.path.basename(os.path.dirname(checkpoint_path))
         else: 
             self.dir_name = datetime.datetime.now().strftime('%m-%d_%H-%M')

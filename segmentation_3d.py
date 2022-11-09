@@ -84,9 +84,9 @@ def train(cfg):
         for param in model_2d.parameters():
             param.requires_grad = False
         model_2d.to(device)
-        model_2d.eval()
+        #model_2d.eval()
     else: 
-        raise ValueError('Use_2d_feat_input must be set to true.')
+        model_2d = None
 
     #TODO change metric_3d for the task 3d segmentation
     #metric_3d = IoU(num_classes=3, ignore_index=2) # ground truth of 3D grid has 3 values:0, 1, -100. Converting label -100 to 2 we have 3 values: 0,1,2

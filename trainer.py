@@ -488,7 +488,8 @@ class Trainer3DSegmentation(BaseTrainer):
     def __init__(self, cfg, model, loss, train_loader, val_loader, projector, optimizer, device, metric_3d,  **kwargs): 
         super(Trainer3DSegmentation, self).__init__(cfg, model, loss, train_loader, val_loader, optimizer, device)
         self.metric_3d = metric_3d
-        self.model_2d = kwargs["model_2d"]
+        if cfg["use_2d_feat_input"]:
+            self.model_2d = kwargs["model_2d"]
         self.num_images = self.cfg["num_images"]
         self.accum_step = self.cfg["trainer"]["accumulation_step"]
         self.val_check_interval = cfg["trainer"]["val_check_interval"]
@@ -519,6 +520,8 @@ class Trainer3DSegmentation(BaseTrainer):
         for batch_idx, batch in enumerate(self.train_loader, 0):
             blobs = batch.data
             self.model.train()
+            if self.cfg["use_2d_feat_input"]:
+                self.model_2d.train()
             #blobs['data']: [N, 32, 32, 64] N: batch_size
             batch_size = blobs['data'].shape[0]
             jump_flag = self._voxel_pixel_association(blobs)
@@ -539,6 +542,8 @@ class Trainer3DSegmentation(BaseTrainer):
                 print('[Iteration %d] TRAIN loss: %.3f(%.3f)' %(self.count, train_loss.val, train_loss.avg))
                 if not self.single_sample: 
                     self.model.eval()
+                    if self.cfg["use_2d_feat_input"]:
+                        self.model_2d.eval()
                     val_loss = 0.0
                     j = 0
                     with torch.no_grad(): 
@@ -578,12 +583,14 @@ class Trainer3DSegmentation(BaseTrainer):
         targets = blobs['label'].long().to(self.device) # [N, 32, 32, 64] 
         batch_size = targets.shape[0]
         rgb_images = []
-        for i in range(batch_size):
-            rgb_images.append(blobs['nearest_images']['images'][i])
-                    
-        rgb_images = torch.cat(rgb_images).to(self.device) # [max_num_images*batch_size,3, 256, 328]
-        imageft = self.model_2d(rgb_images, return_features=True, return_preds=False) # [max_num_images*batch_size,128, 32, 41]
-        blobs['feat_2d'] = imageft
+        
+        if self.cfg['use_2d_feat_input']:
+            for i in range(batch_size):
+                rgb_images.append(blobs['nearest_images']['images'][i])            
+            rgb_images = torch.cat(rgb_images).to(self.device) # [max_num_images*batch_size,3, 256, 328]
+            imageft = self.model_2d(rgb_images, return_features=True, return_preds=False) # [max_num_images*batch_size,128, 32, 41]
+            blobs['feat_2d'] = imageft
+
         preds = self.model(blobs, self.device) #[N, 41, 32, 32, 64]
         loss = self.criterion(preds, targets)/self.accum_step
 
@@ -599,6 +606,8 @@ class Trainer3DSegmentation(BaseTrainer):
         loss = 0.0
         val_loss = AverageMeter()
         self.model.eval()
+        if self.cfg["use_2d_feat_input"]:
+            self.model_2d.eval()
         self.metric_3d.reset()
         count_jump_flag_val = 0
         with torch.no_grad(): 
@@ -626,11 +635,13 @@ class Trainer3DSegmentation(BaseTrainer):
         targets = blobs['label'].long().to(self.device) # [N, 32, 32, 64]
         batch_size = targets.shape[0]
         rgb_images = []
-        for i in range(batch_size):
-            rgb_images.append(blobs['nearest_images']['images'][i])
-        rgb_images = torch.cat(rgb_images).to(self.device) # [max_num_images*batch_size,3, 256, 328]
-        imageft = self.model_2d(rgb_images, return_features=True, return_preds=False) # [max_num_images*batch_size,128, 32, 41]
-        blobs['feat_2d'] = imageft
+
+        if self.cfg['use_2d_feat_input']:
+            for i in range(batch_size):
+                rgb_images.append(blobs['nearest_images']['images'][i])
+            rgb_images = torch.cat(rgb_images).to(self.device) # [max_num_images*batch_size,3, 256, 328]
+            imageft = self.model_2d(rgb_images, return_features=True, return_preds=False) # [max_num_images*batch_size,128, 32, 41]
+            blobs['feat_2d'] = imageft
 
         preds = self.model(blobs, self.device) #[N, 41, 32, 32, 64]
         loss = self.criterion(preds, targets)/self.accum_step
