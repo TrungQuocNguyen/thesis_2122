@@ -19,6 +19,9 @@ direction also holds.
 
 <img src="images/3d_semseg.png" width="1000"/>
 
+
+[Full Thesis](https://drive.google.com/file/d/1tUUAUVvbt4yu1IgM4e3ovXvcKR_JNM_y/view?usp=sharing)
+
 ## Setup
 - Create a conda environment from [`environment.yaml`](environment.yml): 
    ```
@@ -214,3 +217,17 @@ python evaluate_segmentation.py --gt_path GT_SEGMENTATION --pred_path PRED_SEGME
 |:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:| :---:|:---:|:---:|:---:|
 | Train from scratch | **0.821**| 0.928 |**0.570** | 0.772 | 0.800| 0.678 | 0.658 | 0.579| **0.545** | 0.771 | 0.265| 0.487 | 0.554| 0.562| 0.507 | 0.458| 0.845 | **0.604** | 0.728| **0.550**| 0.634|
 | Finetune from reconstruction| 0.819| **0.931**| 0.567| **0.793** | **0.814** | **0.699** | **0.693**| **0.581**| 0.534 | **0.790** | **0.273**| **0.507**| **0.568**| **0.572**| **0.537** | **0.523**| **0.846** | 0.602 | **0.740**| 0.549| **0.647** |
+
+## Citation
+
+If you use this code in your research please cite:
+
+```
+@mastersthesis{
+  author  = {Trung Quoc Nguyen},
+  title   = {From reconstruction to segmentation: Using pretrained features from 3D reconstruction in semantic segmentation},
+  school  = {Technical University of Munich},
+  year    = {2022},
+  note    = {Visual Computing Group}
+}
+```
