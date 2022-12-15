@@ -70,7 +70,7 @@ def train(cfg):
         for module in module_list[-2:]: 
             classifier = classifier + list(module.parameters())
 
-        optimizer = optim.AdamW([{'params': classifier}, {'params': base, 'lr': 1e-4}], lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
+        optimizer = optim.AdamW([{'params': classifier}, {'params': base, 'lr': 5e-5}], lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
     else: 
         optimizer = optim.AdamW(model_3d.parameters(), lr = cfg["optimizer"]["learning_rate"], weight_decay= cfg["optimizer"]["weight_decay"])
 

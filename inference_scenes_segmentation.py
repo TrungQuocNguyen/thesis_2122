@@ -76,7 +76,7 @@ def main(cfg, args):
 
     num_images = 5
     recon_type = args.recon_type
-    assert recon_type in ['gt', '2dfeat'], 'Unknown reconstruction type, please choose between gt and 2dfeat.'
+    assert recon_type in ['gt', '2dfeat', 'rgb'], 'Unknown reconstruction type, please choose between gt and 2dfeat.'
 
     dataset_val = ScanNet2D3D(cfg, split = 'val_scenes_non_overlapping', overfit = cfg["overfit"])
     dataloader_val = get_dataloader(cfg, dataset_val, batch_size= cfg["batch_size"], shuffle= cfg["shuffle_val"], num_workers=cfg["num_workers"], pin_memory= cfg["pin_memory"])
@@ -101,10 +101,12 @@ def main(cfg, args):
 
         model_3d.eval()
 
-        model_2d = DeepLabv3(cfg["model_2d"]["num_classes"])
-        model_2d.load_state_dict(torch.load(cfg["model_2d"]["load_path_2d"])["state_dict"])
-        model_2d.to(device)
-        model_2d.eval()
+        if recon_type == '2dfeat': 
+            print('Loading 2d model...')
+            model_2d = DeepLabv3(cfg["model_2d"]["num_classes"])
+            model_2d.load_state_dict(torch.load(cfg["model_2d"]["load_path_2d"])["state_dict"])
+            model_2d.to(device)
+            model_2d.eval()
 
     out_path = args.output_path
     os.makedirs(out_path)
@@ -127,9 +129,10 @@ def main(cfg, args):
                 print('error in validation batch, skipping the current sample...')
                 continue
             with torch.no_grad(): 
-                rgb_images = sample['nearest_images']['images'][0].to(device) # [5, 3, 256, 328]
-                imageft = model_2d(rgb_images, return_features=True, return_preds=False)
-                sample['feat_2d'] = imageft
+                if recon_type == '2dfeat': 
+                    rgb_images = sample['nearest_images']['images'][0].to(device) # [5, 3, 256, 328]
+                    imageft = model_2d(rgb_images, return_features=True, return_preds=False)
+                    sample['feat_2d'] = imageft
 
                 preds = model_3d(sample, device) #[N, 41, 32, 32, 64]
                 _, preds = torch.max(preds, 1) # preds: [N, 32, 32, 64], 
